@@ -21,7 +21,7 @@ src/
     cloudflare/
       stack.ts                     Alchemy stack, public Website, telemetry, state
       edge.ts                      forwarding-only Website entry
-      api.ts                       private API Worker, telemetry, per-request layers
+      api.ts                       public API Worker, telemetry, per-request layers
       database.ts                  optional D1 resource declaration
       <domain>-d1.ts               optional D1 adapter
       <domain>-object.ts           optional Durable Object host

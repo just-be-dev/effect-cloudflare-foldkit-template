@@ -9,7 +9,6 @@ export default class Api extends Cloudflare.Worker<Api>()(
   {
     main: import.meta.url,
     compatibility: { date: "2026-10-04" },
-    workersDev: false,
     observability: {
       enabled: true,
       logs: { enabled: true, invocationLogs: true, headSamplingRate: 1, persist: true },

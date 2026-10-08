@@ -17,7 +17,7 @@ These are defaults for the new application, not a claim that configuration alone
 
 ## Security defaults to retain
 
-- Keep the API Worker directly reachable only through the public Website's service binding. Its forwarded HTTP routes are public; add verified identity and application authorization before exposing protected data or operations. Cloudflare Access is not configured by default.
+- The API Worker is public directly and through the Website's service binding. Add verified identity and application authorization before exposing protected data or operations, covering both entry points. Cloudflare Access is not configured by default.
 - Preserve persisted native Worker logs/traces and the API's `Cloudflare.Telemetry` layer. Tune sampling and retention for the new product; never attach secrets, authentication headers, payloads, or personal data to logs/spans.
 - Keep a bounded API request body (32 KB was the source default) and consistent `{ "error": string }` failures. Add your own boundary-limit tests; this template does not ship those handlers.
 - If accepting outbound URLs, protect against SSRF when validating **and** before sending: HTTPS, no credentials, no private/loopback destination, with an explicit redirect/DNS policy. The source's literal URL restriction is workflow-specific, not a generic requirement for every app.

@@ -2,7 +2,7 @@
 
 Use Alchemy **2** (`2.0.0-beta.81` in the snapshot), not the v1 `await alchemy(...)` API. The stack is an Effect program. A root `alchemy.run.ts` re-exports the resources/types and default Stack from `src/platform/cloudflare/stack.ts`.
 
-## Keep the API private
+## The Website and API are public
 
 ```text
 Browser / machine client
@@ -11,16 +11,16 @@ Browser / machine client
 Public Website.Foldkit ── static assets
           │ /api/*, runWorkerFirst
           ▼
-edge.ts ── service binding ── private Api Worker
+edge.ts ── service binding ── public Api Worker ◀── direct client (workers.dev)
                                       │
                                       ├── domain services
                                       ├── optional D1 adapters
                                       └── optional Durable Objects / AI
 ```
 
-Declare the website with `Cloudflare.Website.Foldkit`, the private API with `Cloudflare.Worker`, and `env: { API: Api }` on the website. Set `assets.runWorkerFirst: ["/api/*"]` and the API's `workersDev: false`; do not add public API routes. Infer edge environment types with `Cloudflare.InferEnv<typeof Website>`. The edge only forwards to the binding; HTTP routing and business work belong elsewhere.
+Declare the website with `Cloudflare.Website.Foldkit`, the API with `Cloudflare.Worker`, and `env: { API: Api }` on the website. Set `assets.runWorkerFirst: ["/api/*"]`; leave `workersDev` at Alchemy's default `true` so the API has a stable workers.dev URL and version preview URLs. Infer edge environment types with `Cloudflare.InferEnv<typeof Website>`. The edge only forwards to the binding; HTTP routing and business work belong elsewhere.
 
-No Cloudflare Access policy or service token is declared. The Website and its forwarded `/api/*` routes are public. A private API Worker prevents direct invocation through workers.dev; it does not authenticate requests forwarded by the Website.
+No Cloudflare Access policy or service token is declared. The API's `/api/*` routes are public both directly and through the Website. If the new product needs protected operations, enforce authentication and authorization in the API/application, not just in the forwarding edge.
 
 The source uses compatibility date `2026-10-04` on its Workers/Website. Choose and test a date deliberately for the new project. Do not silently rely on a changed default.
 

@@ -2,7 +2,7 @@
 
 A runnable starter for a new application using TypeScript, Effect 4, Foldkit, Bun, mise, and Alchemy 2 on Cloudflare. It captures the organization, tooling, and engineering guardrails of a working project without carrying over its product.
 
-Configuration and code live at the repository root, ready to install, test, build, and run locally. The starter has a neutral Foldkit counter page, a portable Effect service, `GET /api/health`, and an Alchemy stack with a public Website and private API Worker. Cloudflare Access is not configured. Native Worker logs and traces are enabled, including Effect spans in the API. It includes the source's full dependency set, but does not provision D1, Durable Objects, or AI until the new product needs them.
+Configuration and code live at the repository root, ready to install, test, build, and run locally. The starter has a neutral Foldkit counter page, a portable Effect service, `GET /api/health`, and an Alchemy stack with a public Website and public API Worker. Cloudflare Access is not configured. Native Worker logs and traces are enabled, including Effect spans in the API. It includes the source's full dependency set, but does not provision D1, Durable Objects, or AI until the new product needs them.
 
 ```sh
 mise trust && mise install
@@ -12,7 +12,7 @@ bun run build
 mise run dev
 ```
 
-Open the Website URL printed by `mise run dev` (not the private API Worker's URL). The Website and its `/api/*` routes are public in both local and deployed stages. `GET /api/health` returns `{ "name": "Project starter", "status": "ok" }`; unknown API routes return a JSON 404. There are no mutating API routes or request bodies yet. Native development is local; adding Workers AI later can make real remote calls.
+Open the Website URL printed by `mise run dev` for the UI. The API is reachable both directly at its Worker URL and through the Website's `/api/*` forwarding. `GET /api/health` returns `{ "name": "Project starter", "status": "ok" }`; unknown API routes return a JSON 404. There are no mutating API routes or request bodies yet. Native development is local; adding Workers AI later can make real remote calls.
 
 ## Included code structure
 
@@ -23,7 +23,7 @@ src/
   api.ts / api.test.ts           routes and HTTP contract tests
   platform/
     boundary.test.ts             guards backend dependency direction
-    cloudflare/{stack,api,edge}.ts  resources, private Worker, forwarding edge
+    cloudflare/{stack,api,edge}.ts  resources, public API Worker, forwarding edge
   ui/
     entry.ts                     runtime boot
     main.ts                      pure Model, Messages, init, update, view
@@ -50,7 +50,7 @@ An agent can start with: “Read AGENTS.md and docs/ in this repository. Adapt t
 
 ## Deployment requires a new project's choices
 
-Configure an authorized Cloudflare profile (`bun alchemy profile edit --add Cloudflare` or `ALCHEMY_PROFILE`). The Website is public: no Cloudflare Access policy or test service token is created. The API Worker has no direct public URL (`workersDev: false`), but its routes are publicly callable through the Website's service binding. Add the new product's authentication and authorization before exposing protected data or operations. Credentials and local state are not included.
+Configure an authorized Cloudflare profile (`bun alchemy profile edit --add Cloudflare` or `ALCHEMY_PROFILE`). Both Workers are public: no Cloudflare Access policy or test service token is created. The API uses Alchemy's default `workersDev: true`, making its stable workers.dev URL and version preview URLs available as well as the Website's service binding. Add the new product's authentication and authorization before exposing protected data or operations, covering both entry points. Credentials and local state are not included.
 
 `mise run deploy` targets `prod` and changes shared infrastructure; run it only with explicit authorization. The first deploy may offer to bootstrap Cloudflare-hosted Alchemy state. No automatic deploy workflow is included.
 
@@ -62,16 +62,16 @@ After an authorized deploy, send a request to `/api/health` and inspect **Worker
 
 ## What to read
 
-| Guide                                       | What it captures                                                           |
-| ------------------------------------------- | -------------------------------------------------------------------------- |
-| [Organization](docs/organization.md)        | Suggested repository shape and dependency direction                        |
-| [Effect architecture](docs/architecture.md) | Domain ownership, services/layers, lifetimes, transactions, compatibility  |
-| [Tooling](docs/tooling.md)                  | Version snapshot, config choices, commands, MCP, patches, optional AI      |
-| [Cloudflare](docs/cloudflare.md)            | Alchemy 2 phases, private API topology, local state, D1, durable callbacks |
-| [Guardrails](docs/guardrails.md)            | Boundaries, security, verification, operational approval rules             |
-| [Root agent instructions](AGENTS.md)        | Reusable instructions for implementing the new application                 |
-| [UI agent instructions](src/ui/AGENTS.md)   | Foldkit architecture, testing, components, upgrade procedure               |
-| [Dependency patches](patches/README.md)     | Known Alchemy/Foldkit DevTools integration fixes                           |
+| Guide                                       | What it captures                                                             |
+| ------------------------------------------- | ---------------------------------------------------------------------------- |
+| [Organization](docs/organization.md)        | Suggested repository shape and dependency direction                          |
+| [Effect architecture](docs/architecture.md) | Domain ownership, services/layers, lifetimes, transactions, compatibility    |
+| [Tooling](docs/tooling.md)                  | Version snapshot, config choices, commands, MCP, patches, optional AI        |
+| [Cloudflare](docs/cloudflare.md)            | Alchemy 2 phases, public Worker topology, local state, D1, durable callbacks |
+| [Guardrails](docs/guardrails.md)            | Boundaries, security, verification, operational approval rules               |
+| [Root agent instructions](AGENTS.md)        | Reusable instructions for implementing the new application                   |
+| [UI agent instructions](src/ui/AGENTS.md)   | Foldkit architecture, testing, components, upgrade procedure                 |
+| [Dependency patches](patches/README.md)     | Known Alchemy/Foldkit DevTools integration fixes                             |
 
 ## Provenance and limits
 

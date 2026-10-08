@@ -2,7 +2,7 @@
 
 This is a runnable starter. Read `README.md` and `docs/`, replace the sample domain/UI, and add the new product's layout, API, and invariants. Do not recreate the source project's automation application.
 
-`src/model.ts` and `src/service.ts` own the sample Schema/service. `src/api.ts` composes its health route. `src/platform/cloudflare/{stack,api,edge}.ts` declares resources, hosts the private API, and forwards requests. `src/ui/entry.ts` boots the counter definitions in `main.ts`. D1, Durable Objects, and AI are available dependencies but are not provisioned by default.
+`src/model.ts` and `src/service.ts` own the sample Schema/service. `src/api.ts` composes its health route. `src/platform/cloudflare/{stack,api,edge}.ts` declares resources, hosts the public API, and forwards requests. `src/ui/entry.ts` boots the counter definitions in `main.ts`. D1, Durable Objects, and AI are available dependencies but are not provisioned by default.
 
 ## Ownership and scope
 
@@ -31,7 +31,7 @@ This is a runnable starter. Read `README.md` and `docs/`, replace the sample dom
 - Use Alchemy 2's Effect API, not v1 Promise-based examples. Installed `node_modules/alchemy/src` is the final reference; documentation starts at https://alchemy.run/llms.txt.
 - The outer Worker/DO Effect runs at plan time and cold start: declare/acquire bindings there. Storage, raw bindings, callbacks, and identity are usable only in the returned instance/request runtime.
 - Never load `cloudflare:*` at module top level through a plan-time import path.
-- Keep the public Website edge forwarding-only. The API Worker remains private (`workersDev: false`, no public routes), reached over a service binding from the public Website. Its HTTP routes are public through that Website.
+- Keep the public Website edge forwarding-only. The API Worker uses Alchemy's public workers.dev default and is also reached over a service binding from the Website. Both entry points reach the same HTTP routes.
 - Do not add Cloudflare Access by default. The starter has no authentication; implement the new product's identity and authorization deliberately before exposing protected operations.
 - Preserve native Workers Observability logs and traces on both Workers. Provide `Cloudflare.Telemetry` on Effect-native hosts so `Effect.withSpan` / named `Effect.fn` spans reach Cloudflare, rather than merely enabling the trace metadata. Keep compatibility dates at least `2026-07-28`, tune sampling for volume, and never attach secrets or payloads to telemetry.
 - Callbacks are delivered at least once. Make side effects and scheduled jobs idempotent, and test crash/retry behavior.
