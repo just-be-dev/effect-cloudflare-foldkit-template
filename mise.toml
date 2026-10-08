@@ -3,10 +3,14 @@ experimental = true
 pin = true
 
 [hooks]
-postinstall = "bun install"
+postinstall = "bun install --frozen-lockfile"
 
 [env]
 _.path = "node_modules/.bin"
+
+[tasks.check]
+description = "Typecheck, lint, test, and check formatting"
+run = "bun run typecheck && bun run lint && bun run test && bun run format:check"
 
 [tasks.typecheck]
 run = "bun run typecheck"
@@ -34,6 +38,29 @@ run = "bun run deploy --stage prod"
 
 [tasks.prepare]
 run = "bun run prepare"
+
+[tasks."cloudflare:profile"]
+description = "Add a Cloudflare profile for Alchemy"
+run = "alchemy profile edit --add Cloudflare"
+
+[tasks."effect-solutions"]
+description = "Browse Effect Solutions guides, e.g. `list` or `show <topic>`"
+run = "bunx effect-solutions"
+
+[tasks."ui:add"]
+description = "Add a foldcn component to src/ui"
+usage = 'arg "<name>" help="foldcn component name, e.g. button"'
+run = 'bunx shadcn@latest add "@foldcn/${usage_name}"'
+
+[tasks.patch]
+description = "Prepare a dependency in node_modules for patching"
+usage = 'arg "<package>" help="package name, e.g. @foldkit/vite-plugin"'
+run = 'bun patch "${usage_package}"'
+
+[tasks."patch:commit"]
+description = "Save edits to a patched dependency into patches/"
+usage = 'arg "<package>" help="package name, e.g. @foldkit/vite-plugin"'
+run = 'bun patch --commit "node_modules/${usage_package}"'
 
 [tools]
 bun = "1.4.2"

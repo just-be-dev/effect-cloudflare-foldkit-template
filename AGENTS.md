@@ -16,7 +16,7 @@ A runnable starter. Read `README.md` and `docs/`, replace the sample service and
 
 ## Effect
 
-- Before writing Effect code, run `bunx effect-solutions list`, then `bunx effect-solutions show <topic>` for the patterns you need. Check examples against the installed Effect 4 APIs.
+- Before writing Effect code, run `mise run effect-solutions list`, then `mise run effect-solutions show <topic>` for the patterns you need. Check examples against the installed Effect 4 APIs.
 - Import modules directly, e.g. `import * as Effect from "effect/Effect"`.
 - Write new Worker and Durable Object code in Effect. Wrap Promise SDKs at the platform boundary with `Effect.tryPromise` and a typed error.
 - Decode HTTP bodies and params, stored values, remote responses, configuration, and model output with Schema. Decide what happens when stored data no longer decodes.
@@ -43,10 +43,10 @@ A runnable starter. Read `README.md` and `docs/`, replace the sample service and
 From the repo root:
 
 ```sh
-bun run typecheck && bun run lint && bun run test && bun run format:check
+mise run check
 ```
 
-- Run `bun run build` for UI or build changes. It's a local check, not a deploy.
+- Run `mise run build` for UI or build changes. It's a local check, not a deploy.
 - Tests use `bun:test` next to the code they cover. Run Effects with `Effect.runSync` or `Effect.runPromise`.
 - Use memory services for application tests. Native Worker, Durable Object, D1, identity, and AI behavior needs local end-to-end checks with `mise run dev` and the URL it prints.
 - Test both sides of boundaries, plus failure, retry, and concurrency cases that would catch a plausible bug. Memory tests don't prove native transactional guarantees.
@@ -56,7 +56,7 @@ bun run typecheck && bun run lint && bun run test && bun run format:check
 ## Dependencies and operational safety
 
 - Keep Foldkit, `@foldkit/*`, Vite, and `@effect/platform-*` exactly pinned. Upgrade compatible versions together and refresh the UI conventions from the installed Foldkit tag.
-- Patch dependencies only with `bun patch`, and document the symptom, cause, fix, and removal criteria in `patches/README.md`. Recheck patches on every upgrade.
+- Patch dependencies only with `mise run patch` and `mise run patch:commit`, and document the symptom, cause, fix, and removal criteria in `patches/README.md`. Recheck patches on every upgrade.
 - Never commit secrets, tokens, `.env` files, `.alchemy/`, `.wrangler/`, `node_modules/`, or build output. `private: true` blocks npm publishing; GitHub visibility is set separately.
 - When the user shares a local URL, start with read-only API calls. Mutating requests, AI prompts, job starts, and migrations can change data or cost money.
 - Get explicit approval before deploying or destroying, running dev against a deployed stage, migrating shared databases, restarting production, changing access controls, pushing, publishing, or opening or merging PRs. Local disposable tests are fine.

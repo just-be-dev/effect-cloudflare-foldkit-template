@@ -22,12 +22,12 @@ Effect 4 is a stable release; older guides that call it a pre-release are out of
 
 ## Config files
 
-- `mise.toml`: pins Bun, turns on experimental settings and pinning, adds `node_modules/.bin` to PATH, and runs `bun install` after tools install. Each package script has a matching mise task. Change tool versions with `mise use bun@<version>`.
+- `mise.toml`: pins Bun, turns on experimental settings and pinning, adds `node_modules/.bin` to PATH, and installs the dependencies locked in `bun.lock` after tools install, so `mise install` is the only setup step. Each package script has a matching mise task, and `mise tasks` lists them all. Change tool versions with `mise use bun@<version>`.
 - `bunfig.toml`: limits test discovery to `./src`.
 - `package.json`: ESM, `private: true`, scripts, exact pins, the workerd override, and Bun patch mappings.
 - `tsconfig.json`: strict mode, `noUncheckedIndexedAccess`, bundler resolution, preserved modules, `verbatimModuleSyntax`, and the Effect language-service plugin. Browser, Worker, and Bun types are all loaded; the boundary test keeps native globals out of backend domains.
 - Language-service overrides allow the unstable `effect/http` module only in HTTP, UI command, and platform API files. `effect-oxlint` is allowed as a duplicate Effect consumer. Add narrow per-file exceptions for other unstable APIs as you use them.
-- `vite.config.ts`: the `foldkit()` and Tailwind plugins, UI entry optimization, the `@/` alias, Effect/Foldkit deduplication, and a watch exclusion for `.alchemy/`. Alchemy adds its Cloudflare integration on top for dev and deploy. `bun run build` checks the UI bundle locally.
+- `vite.config.ts`: the `foldkit()` and Tailwind plugins, UI entry optimization, the `@/` alias, Effect/Foldkit deduplication, and a watch exclusion for `.alchemy/`. Alchemy adds its Cloudflare integration on top for dev and deploy. `mise run build` checks the UI bundle locally.
 - `oxlint.config.ts`: loads the Effect and Foldkit plugins, turns on three Effect error rules everywhere, and applies Foldkit's architecture rules to `src/ui/**/*.ts`.
 - `components.json`: foldcn registry and UI aliases for the shadcn CLI, pointing at `src/ui/styles.css`.
 - `.mcp.json` and `.amp/settings.json`: run the `@foldkit/devtools-mcp` server with Bun. Amp reads `amp.mcpServers`; other clients read `.mcp.json`. The tools inspect a running app's Model and Messages and support time travel during local development.
@@ -44,22 +44,18 @@ Run these from the repo root:
 
 ```sh
 mise trust && mise install
-bun install --frozen-lockfile
-bun run typecheck
-bun run lint
-bun run test
-bun run format:check
-bun run build
+mise run check   # typecheck, lint, test, format:check
+mise run build
 mise run dev
 ```
 
-`mise run format` rewrites files; `format:check` only reports. `mise run deploy` runs `bun run deploy --stage prod` and changes shared infrastructure, so only run it with approval and after setting up your own stack, account, and stage.
+`mise run format` rewrites files; `format:check` only reports. `mise run deploy` runs `alchemy deploy --stage prod` and changes shared infrastructure, so only run it with approval and after setting up your own stack, account, and stage.
 
 ## Patches
 
 Under `alchemy dev`, Cloudflare's Vite upgrade listener interferes with Foldkit's DevTools relay on Vite's HTTP server. One patch moves the relay to its own token-protected loopback listener. The other adds backoff when a connection closes right after opening. See [patches/README.md](../patches/README.md).
 
-Edit patches with `bun patch <package>` and `bun patch --commit node_modules/<package>`, and document the symptom, cause, fix, and when to remove it. After an upgrade, check whether each patch is still needed and run a browser-connected DevTools session under `alchemy dev`; a clean install doesn't prove the relay is stable. Keep the relay on loopback with its token.
+Edit patches with `mise run patch <package>` and `mise run patch:commit <package>`, and document the symptom, cause, fix, and when to remove it. After an upgrade, check whether each patch is still needed and run a browser-connected DevTools session under `alchemy dev`; a clean install doesn't prove the relay is stable. Keep the relay on loopback with its token.
 
 Revisit the workerd override whenever you upgrade Alchemy.
 

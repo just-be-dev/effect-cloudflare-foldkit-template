@@ -5,7 +5,7 @@
 These instructions cover `src/ui/` and everything under it. The UI uses Foldkit, an Elm-style framework built on Effect.
 
 - Import Foldkit from the installed npm packages.
-- Runtime boot lives in `src/ui/entry.ts`; the definitions it boots live in their own modules (see Layout). Server code lives outside `src/ui/` (see the root `AGENTS.md`). Alchemy runs the Vite dev server under `alchemy dev` and the Vite build for the Website Worker on deploy. `bun run build` is a local check.
+- Runtime boot lives in `src/ui/entry.ts`; the definitions it boots live in their own modules (see Layout). Server code lives outside `src/ui/` (see the root `AGENTS.md`). Alchemy runs the Vite dev server under `alchemy dev` and the Vite build for the Website Worker on deploy. `mise run build` is a local check.
 - Foldkit's architecture lint rules apply to `src/ui/` only.
 - Check APIs against the installed package types and the upstream source at the `foldkit@<installed-version>` GitHub tag. When these conventions or the online docs disagree with the installed APIs, the source and examples win.
 
@@ -25,7 +25,7 @@ The app follows [Foldkit's project organization](https://foldkit.dev/patterns/pr
 The UI uses Tailwind CSS v4 and [foldcn](https://foldcn.elianiva.com), a shadcn-style registry of copy-paste Foldkit components. Agent docs are at https://foldcn.elianiva.com/llms.txt, and every page has a Markdown version at `/docs/<name>.md`.
 
 - Components live in `src/ui/components/ui/`: badge, bubble, button, empty, input, message, and textarea. `cn` is in `src/ui/lib/utils.ts`. Import through the `@/` alias, which maps to `src/ui/` in `tsconfig.json` and `vite.config.ts`. The project owns these copies, so edit them freely.
-- Add a component with `bunx shadcn@latest add @foldcn/<name>`; `components.json` already registers the namespace. Review the diff afterwards, since the CLI may also touch `src/ui/styles.css` or `package.json`.
+- Add a component with `mise run ui:add <name>`; `components.json` already registers the namespace. Review the diff afterwards, since the CLI may also touch `src/ui/styles.css` or `package.json`.
 - Never install the `@foldcn/foldcn` base item. Its dependency pins can conflict with the exact versions here. The theme mapping the components need is already in `src/ui/styles.css`.
 - Theme tokens live in `src/ui/styles.css`. Use semantic tokens like `bg-card` and `text-muted-foreground` instead of raw colors. For a saved theme, keep the system preference and an explicit `data-theme` in sync across Tailwind's dark variant, boot Flags, the persistence Command, and a same-origin pre-paint script.
 - Fonts are self-hosted with Fontsource and imported in `entry.ts`; Inter and IBM Plex Mono are installed. The CSP in `public/_headers` sets `font-src 'self'`, so load fonts and stylesheets from this origin.

@@ -54,7 +54,7 @@ A D1 adapter can grab its database binding in the outer Effect and return a laye
 
 Run `mise run dev` from the repo root and use the Website URL it prints; the port isn't fixed. Workers AI calls are real remote requests even in local dev and need credentials.
 
-To deploy, add a Cloudflare profile with `bun alchemy profile edit --add Cloudflare` or select one with `ALCHEMY_PROFILE`. The first deploy may offer to create Alchemy's Cloudflare-hosted state store. That changes shared infrastructure, so get approval first.
+To deploy, add a Cloudflare profile with `mise run cloudflare:profile` or select one with `ALCHEMY_PROFILE`. The first deploy may offer to create Alchemy's Cloudflare-hosted state store. That changes shared infrastructure, so get approval first.
 
 ## Identity and authorization
 

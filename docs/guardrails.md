@@ -27,8 +27,8 @@
 ## Verification
 
 ```sh
-bun run typecheck && bun run lint && bun run test && bun run format:check
-bun run build  # for UI or bundling changes; touches no infrastructure
+mise run check
+mise run build  # for UI or bundling changes; touches no infrastructure
 ```
 
 Put `bun:test` files next to the code they cover and use memory implementations with scripted external services. Pick test inputs that a plausible wrong implementation would fail: both sides of a limit, asymmetric values, interrupted writes, duplicate delivery, stale replies, overlapping reports. Work out expected results independently of the code.

@@ -6,9 +6,8 @@ It comes with a Foldkit counter page, a small Effect service, a `GET /api/health
 
 ```sh
 mise trust && mise install
-bun install --frozen-lockfile
-bun run typecheck && bun run lint && bun run test && bun run format:check
-bun run build
+mise run check
+mise run build
 mise run dev
 ```
 
@@ -42,7 +41,7 @@ Root files configure Bun, mise, TypeScript, Vite, Oxlint/Oxfmt, foldcn, the Fold
 1. Click **Use this template → Create a new repository** and pick the new repository's visibility.
 2. Decide on the product's domain names, who owns which data, how users authenticate, and whether you need D1, Durable Objects, or AI.
 3. Rename things: `name` in `package.json`, the `project-starter` stack in `src/platform/cloudflare/stack.ts`, the app name in `src/platform/cloudflare/api.ts`, and the page title and content in `index.html` and `src/ui/`. Resource names stick once deployed, so settle them before the first deploy.
-4. Run `mise trust && mise install`, then `bun install --frozen-lockfile`. Commit `bun.lock`. Read the [tooling guide](docs/tooling.md) before upgrading dependencies.
+4. Run `mise trust && mise install`. It installs Bun and the locked dependencies. Commit `bun.lock`. Read the [tooling guide](docs/tooling.md) before upgrading dependencies.
 5. Replace the sample service and counter with your first real feature. Keep Cloudflare code in `src/platform/cloudflare/` and runtime boot in `src/ui/entry.ts`.
 6. Add your product's invariants to `AGENTS.md`, rewrite this README, and run the [checks](docs/guardrails.md).
 
@@ -50,7 +49,7 @@ A prompt for an agent: "Read AGENTS.md and docs/. Adapt this starter for an appl
 
 ## Deploying
 
-Set up a Cloudflare profile with `bun alchemy profile edit --add Cloudflare`, or point `ALCHEMY_PROFILE` at an existing one. `mise run deploy` deploys the `prod` stage. The first deploy may offer to create Cloudflare-hosted Alchemy state.
+Set up a Cloudflare profile with `mise run cloudflare:profile`, or point `ALCHEMY_PROFILE` at an existing one. `mise run deploy` deploys the `prod` stage. The first deploy may offer to create Cloudflare-hosted Alchemy state.
 
 Both Workers are public. The API answers on its workers.dev URL and through the Website's service binding, so any authentication you add has to cover both.
 
