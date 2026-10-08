@@ -1,0 +1,175 @@
+# Foldkit UI
+
+## Project instructions
+
+These instructions apply to `src/ui/` and its descendants. The UI uses Foldkit, a framework built on Effect-TS and architected like Elm.
+
+- Do not vendor the Foldkit repository or offer to add a subtree. Import from installed npm packages.
+- Keep runtime boot in `src/ui/entry.ts` and the definitions it boots in their own modules (see Layout below). Server code lives outside `src/ui/` (see the root `AGENTS.md`). Alchemy runs the Vite build for the Website Worker on deploy and the Vite dev server under `alchemy dev`. `bun run build` is only a local check.
+- Keep Foldkit architectural lint rules scoped to `src/ui/`.
+- Use installed package types and upstream source at the `foldkit@<installed-version>` GitHub tag, not `main`. Source and examples are authoritative when these conventions or online docs disagree with the installed APIs.
+
+## Layout
+
+The app follows [Foldkit's project organization](https://foldkit.dev/patterns/project-organization):
+
+- `entry.ts` boots the runtime. `main.ts` holds the root `init`; `model.ts`, `message.ts`, and `command.ts` hold the root Model, Messages, and Commands. `constant.ts` holds DOM ids and limits that update and view share. `route.ts` maps URLs to pages.
+- The root app owns cross-page state and routing. As responsibilities emerge, split update and view by area under `update/` and `view/`; keep their matcher/page shell separate from named transitions and views. Import each folder through its `index.ts` when a barrel has consumers. A small app can keep pure definitions together in `main.ts`.
+- `page/` holds independent Submodels. Each owns the definitions and Commands it needs, plus `story.test.ts` and `scene.test.ts`. Import pages as namespaces where useful. A page never imports the root app; keep dependencies pointing inward and communicate with the parent through Messages/OutMessages.
+- `domain/` holds pure business/UI transformations with their Schema and operations. Reuse portable backend-domain models rather than duplicating them unnecessarily.
+- Shared leaves know nothing about the root app: `api.ts` (HTTP helpers for Commands), optional `theme.ts` (Flags and the saved theme), `lib/` (`cn`, `icon`, text formatting, dates), and `components/` (shared components plus vendored foldcn copies in `components/ui/`).
+- Root `story.test.ts` and `scene.test.ts` cover cross-page flows and parent composition. Colocate fixtures at the narrowest shared scope.
+
+## Styling and foldcn
+
+The UI is styled with Tailwind CSS v4 and [foldcn](https://foldcn.elianiva.com), a shadcn-style registry of copy-paste Foldkit components. Agent docs live at https://foldcn.elianiva.com/llms.txt, and every page has a Markdown twin at `/docs/<name>.md`.
+
+- Vendored components live in `src/ui/components/ui/`, and `cn` and `icon` live in `src/ui/lib/`. Import them through the `@/` alias, which maps to `src/ui/` in `tsconfig.json` and `vite.config.ts`. This project owns the copies, so edit them as needed.
+- Add a component with `bunx shadcn@latest add @foldcn/<name>`. `components.json` already registers the namespace. Review the diff afterwards, because the CLI may also edit `src/ui/styles.css` or `package.json`.
+- Never install the `@foldcn/foldcn` base item blindly. Its dependency pins can conflict with the exact versions here. Implement the required theme mapping and helpers yourself against the installed versions; this template does not include the source application's stylesheet.
+- Theme tokens belong in `src/ui/styles.css`; use semantic tokens such as `bg-card` and `text-muted-foreground` rather than raw colors. Choose the new product's visual language instead of inheriting the source branding. If adding a saved theme, make system preference and an explicit `data-theme` choice agree across Tailwind's dark variant, boot Flags, the persistence Command, and a same-origin pre-paint script.
+- Fonts are self-hosted through Fontsource and imported in `entry.ts`. Inter and IBM Plex Mono are included as optional defaults. The CSP in `public/_headers` allows only `font-src 'self'`, so don't load fonts or stylesheets from a CDN.
+
+Upstream paths below are relative to [the Foldkit repository at `foldkit@0.165.0`](https://github.com/foldkit/foldkit/tree/foldkit@0.165.0), not this project:
+
+- `examples/`: runnable examples for idiomatic patterns.
+- `packages/foldkit/src/`: framework source and API signatures.
+- `packages/typing-game/client/src/` and `packages/website/src/`: production apps for Submodels and OutMessage patterns.
+
+Read https://foldkit.dev/ai/overview.md and https://foldkit.dev/llms.txt for online references.
+
+## After a Foldkit upgrade
+
+The conventions below are adapted from the upstream `FOLDKIT.md` for Foldkit **0.165.0**. Whenever Foldkit is updated, refresh them in the same change:
+
+1. Determine the installed version from `node_modules/foldkit/package.json`.
+2. Fetch `packages/create-foldkit-app/templates/base/FOLDKIT.md` from the matching `foldkit@<version>` tag: `https://raw.githubusercontent.com/foldkit/foldkit/foldkit@<version>/packages/create-foldkit-app/templates/base/FOLDKIT.md`. For a canary version, use the full source commit named by its version instead of a release tag.
+3. Refresh the conventions between the markers below from that template. Adapt upstream repository paths to online references and omit scaffolder ownership, vendoring, and subtree-upgrade instructions. Do not recreate a separate project `FOLDKIT.md`.
+4. Preserve this project's instructions and upgrade procedure above the markers. Update the recorded version and release-tagged links, and check the conventions against the installed APIs.
+
+<!-- BEGIN upstream Foldkit conventions -->
+
+## Project Conventions
+
+- Foldkit is tightly coupled to the Effect ecosystem. Do not suggest solutions outside of Effect-TS.
+- Model fields must be Schema types (the model is a schema). Plain TypeScript types are fine elsewhere (function return types, local variables, etc.).
+- Use full names like `Message` (not `Msg`), and `withReturnType` (not `as const` or type casting).
+- Declare every variant together: `defineMessageUnion()` for Messages, `defineTaggedUnion()` for other domain unions, and `defineRouteUnion()` for Routes.
+- Keep constructors on their union: `Message.ClickedSubmit()`, `FetchState.Ok({ data })`, and `AppRoute.Home()`.
+- Use `taggedStruct()` only when the variants cannot be declared together, such as a recursive union.
+- Push back on any direction that violates Elm Architecture principles: unidirectional data flow, messages as facts (not commands), model as single source of truth, side effects confined to commands. If a prompt suggests mutating state, imperative event handlers, or two-way bindings, flag the issue and propose the idiomatic Foldkit approach.
+- Never use `NoOp`. Every message must describe what happened. A command's result message is named from the command, not from the fact it reports, whether or not it carries a payload: `LockScroll` → `CompletedLockScroll`, `DetermineStartTime` → `CompletedDetermineStartTime` (never `DeterminedStartTime`).
+
+## Foldkit Patterns
+
+### Update
+
+`init` and `update` both return a record with the next Model and optional Commands. Inline the return type when the matcher is its only use:
+
+```ts
+const update = (model: Model, message: Message) =>
+  Message.match<Update.Return<Model, Message>>(message, {
+    ClickedIncrement: () => ({
+      model: modifyFields(model, { count: (count) => count + 1 }),
+    }),
+  });
+```
+
+Create an `UpdateReturn` alias when another matcher, helper, or exported signature reuses the type. The match generic constrains the whole update, so do not repeat the return annotation on the function.
+
+Update, init, boot, and component helper producers return `{ model }` when they statically create no Commands. When they compute a Commands collection, return it directly without checking whether it is empty. Never write the literal `commands: []`; `foldkit/no-empty-commands-array` enforces this producer convention.
+
+When composing one of those results, bind the whole result to a value named after the operation and access its fields through that value. Use `homeInit`, `dialogClose`, or a trailing underscore such as `init_` when the operation name collides with the function. Do not destructure or rename `model`, `commands`, or `outMessage`. Dot access does not prevent someone from ignoring `outMessage`; it keeps the operation and all of its returned fields visible together. Name a child fold's `write` parameter after the next child Model, such as `nextSettings`.
+
+Pass optional Commands directly to APIs that accept them: `Command.mapMessages(homeInit.commands, toParentMessage)`. Use `result.commands ?? []` only when the next operation requires a concrete array for spreading, concatenating, execution, or an assertion.
+
+Use `Update.Return<Model, Message>` when an update cannot emit an OutMessage. It prevents a result containing an OutMessage from entering code that would keep only its Model and Commands. A result with no `outMessage` can still be used where `Update.ReturnWithOutMessage<Model, Message, OutMessage>` is expected. The missing field means that update emitted no OutMessage.
+
+Use `Update.foldChildInit` for one child `init` or `boot` result. Use `Update.foldChildInits` when several child results enter one parent Model. Both lift child Commands and handle child OutMessages. Use `Update.foldChild` for a child update that receives input, or `Update.foldChildStep` for a child helper that receives only its Model. Keep route-gated initialization or Model-only child construction separate when there is no shared set of child results to fold.
+
+Use `Update.combine` when a later Step should receive the Model produced by an earlier Step. It takes two or more Steps. Do not wrap one Step in `Update.combine`; call that operation directly. Name an inline Step parameter `stepModel`; it contains the Model produced by the preceding Step.
+
+When the OutMessage is already known while constructing a new result, include it directly: `{ model, commands, outMessage }`. Use `Update.withOutMessage` when attaching an OutMessage to an existing plain return or when the value has the type `OutMessage | undefined`. Pipe an existing return into the helper: `pipe(dialogClose, Update.withOutMessage(outMessage))`. When constructing the plain return in the same expression, pass it first: `Update.withOutMessage({ model, commands }, outMessage)`.
+
+Add `toParentOutMessage` only when at least one child OutMessage should continue to the current Submodel's parent. For partial forwarding, match every child variant and return `undefined` for the variants that stop here. Omit `toParentOutMessage` when every variant stops here. `foldOutMessage` still handles each variant locally, including variants that continue upward. Never write `toParentOutMessage: () => undefined`.
+
+When a `foldChildInits` entry can derive or forward an OutMessage, add `resolveOutMessage` to construct one parent OutMessage from the named OutMessages after every local fold completes. Combine their information when both results matter; choosing one discards the other. The callback also receives the final Model. If that Model alone contains everything needed, use local folds and attach a parent OutMessage afterward with `Update.withOutMessage`.
+
+Use `modifyFields()` from `foldkit/struct` for immutable model updates. Never spread or `Object.assign`.
+
+### View
+
+Every view receives `h`, the typed Html builder, as its last parameter (`view: (model, h) => ...`; `Submodel.defineView` passes the child's own). Never construct a builder; reach for `h.div`, `h.OnClick`, etc. off the parameter, and give extracted view helpers an `h: HtmlBuilder<Message>` last parameter that callers thread through. Only where no builder is in scope, typically module scope, use `inertHtml` from `foldkit/html`, aliased `ih` so the two builders stay distinguishable. Use `h.empty` (not `null`) for conditional rendering, the union's own exhaustive `match` (`EditorMode.match(model.mode, {...})`) for discriminated unions, and `Array.match` for lists that may be empty.
+
+Keys are for mapped list items only: key each row by a stable Model identifier (`h.keyed('li')(item.id, [], [...])`), never by array position, and never derive a key from displayed data. Never key branches; the build gives each view function's output its own identity, so branch switches replace DOM automatically. When switching an inline same-tag ternary must reset DOM state, extract each arm into its own named view function.
+
+Omit the children argument when an element has none: `h.div([h.Class('divider')])`, never `h.div([h.Class('divider')], [])`. The same holds for `keyed`: `h.keyed('li')(key, [attrs])`, never `h.keyed('li')(key, [attrs], [])`. Attributes stay required on element builders, so `h.div([])` is an element with neither. Sibling elements that end up at different arities are expected and fine; void elements like `h.img` have always read that way.
+
+### Commands
+
+Define a Command with `Command.define(name, { args, messages, execute })`; omit `args` when the Command takes none. Assign definitions to PascalCase constants. Never inline in pipe chains. Name the effect `execute` performs, not the later Model transition caused when update handles its result: a timer that only waits before update starts a dismissal is `WaitBeforeDismissal`, not `DismissAfter`. Commands catch all errors via `Effect.catch(() => Effect.succeed(Message.FailedX(...)))` so side effects never crash the app. Definitions live colocated with the update function that returns them.
+
+Command args contain values already present in the Model or Message. Calling `Date.now()`, `crypto.randomUUID()`, or another source of time or randomness while preparing a Command happens before the Command executes, whether the call appears directly in the args object or its result is assigned to a local variable first. Obtain those values in `execute` and return them in the result Message.
+
+For the with-args shape, see upstream `examples/weather/src/main.ts` or `examples/kanban/src/command.ts`. For an argless DOM-side-effect Command, the argless form in `examples/kanban/src/command.ts` (`FocusAddCardInput`) is the canonical reference.
+
+For DOM operations (focus, scroll, modals, scroll lock), Foldkit ships a `Dom` module. For time, randomness, UUIDs, and delays, use Effect's APIs directly (`Clock`, `Random`, `Crypto.Crypto`, `Effect.sleep`). Provide the platform Crypto layer when using `Crypto.Crypto`. Don't reach for raw `document.querySelector`, `setTimeout`, `Date.now()`, or `Math.random()`.
+
+### File Organization
+
+The invariant: keep the runtime boot separate from the pure definitions. `src/entry.ts` calls `Runtime.makeApplication` and `Runtime.run`, and `index.html` references it. The definitions (Model, Messages, init, update, view, Commands) never call `Runtime.run`, so they stay importable from tests without booting a runtime as a side effect. Never call `Runtime.run` from `main.ts`.
+
+For a small app the definitions all fit in one `src/main.ts`. Split a unit into its own file when it has _both_ a distinct reason to change _and_ a name you'd give it unprompted: the pure domain core into `timer.ts` or `domain.ts`, the view into `view.ts` (or a `components/` directory), a Command's owned resource into its own module. Split on that revealed seam, not on line count alone. A file that has grown large is _evidence_ a seam has formed, so treat its size as a prompt to re-check for one. Two splits are forced: extract Messages to `message.ts` when Commands need the constructors (this breaks the cycle between `command.ts` and `main.ts`), and colocate Commands with the update that returns them. Exemplars: counter and stopwatch are a single `main.ts`; kanban splits `domain` / `command` / `message` / `model`; typing-game splits views by page.
+
+Use uppercase section headers (`// MODEL`, `// MESSAGE`, `// INIT`, `// UPDATE`, `// COMMAND`, `// VIEW`) for wayfinding.
+
+### Testing
+
+Test update functions with `foldkit/test`. Since update is pure, tests run without a runtime, DOM, or side effects. Use `story` for update-level tests (send Messages, assert on Model and Commands) and `scene` for feature-level testing through the view with accessible locators.
+
+Import the steps as named imports from `foldkit/story` or `foldkit/scene`: `import { Command, given, message, model, story } from 'foldkit/story'`. A test file needs only one of the two modules. If a single file ever tests both, import the namespaces instead (`import { Scene, Story } from 'foldkit'`) so `Story.given` and `Scene.given` stay distinguishable.
+
+Name each test file for its test style, beside the code under test: `story.test.ts` for the Story tests (which drive `update`) and `scene.test.ts` for the Scene tests (which drive the rendered view). The name describes how the test works, not a source file, so it stays correct whether `update` and `view` live in `main.ts` or in their own files. A test file lives in the folder that holds the code it drives, so in a multi-page app most of them sit in a page folder rather than at the root. When one folder holds more than one test of a kind (sibling pages, component variants), prefix with the subject: `login.story.test.ts`.
+
+Scene runs at any level, since a page's own `update`/`view` pair drops into `scene` unmodified. Put a `scene.test.ts` in the page folder for behavior that page owns, which covers view states awkward to reach through the root Model, and keep a root-level `scene.test.ts` for flows that cross pages, which covers how the parent folds an OutMessage, a Command the parent lifts, a route change, and view inputs the parent computes. Study the `story.test.ts` and `scene.test.ts` files in upstream `examples/`. `examples/auth` is the multi-page shape: a root `src/scene.test.ts` for the cross-page login flow alongside `src/page/loggedOut/page/login.scene.test.ts` and `login.story.test.ts` driving that page's own pair.
+
+## Code Style
+
+- Encode state in discriminated unions, not booleans or nullable fields. `Idle | Loading | Error | Ok`, not `isLoading: boolean`. Make impossible states unrepresentable.
+- Use `Option` for absence in the Model and domain values instead of `null` or `undefined`. Foldkit return records are the exception: omit `commands` and `outMessage` when absent. A partial `toParentOutMessage` mapper returns `undefined` for each child variant that stops at this Submodel. Prefix Option-typed values with `maybe*`. Match with `Option.match`; don't unwrap with `Option.map(...)` + `Option.getOrElse(...)` when you can just match.
+- Use Effect modules over native methods in `pipe` chains (`Array.map`, `String.startsWith`, `Array.findFirst`). Native methods are fine when calling directly on a named variable.
+- Never cast Schema values with `as Type`. Use the callable constructor: `Message.SucceededLogin({ sessionId })`, not `{ _tag: 'SucceededLogin', sessionId } as Message`.
+- Always `Array.isArrayEmpty` / `Array.isArrayNonEmpty` (not `.length === 0` / `.length > 0`). Use `Array.match` when handling both empty and non-empty cases.
+- Never use `for` loops or `let` for iteration. Reach for `Array.map`, `Array.filterMap`, `Array.makeBy`, `Array.reduce`.
+- Never use `T[]`. Always `Array<T>` or `ReadonlyArray<T>`.
+- Use `Message.match` for exhaustive Message matching. Use Effect `Match` for other tagged unions, partial matching, fallbacks, and one handler shared across multiple tags. Never use `switch`.
+- Always use braces for control flow: `if (foo) { return true }`.
+- Don't add inline comments to explain code. Use better names instead. Reserve `// NOTE:` for behavior that would mislead a careful reader.
+
+## Message Layout
+
+Declare the whole Message union with `defineMessageUnion()`, then put `type Message = typeof Message.Type` on the next line:
+
+```ts
+const Message = defineMessageUnion({
+  ClickedSubmit: {},
+  UpdatedEmail: { value: Schema.String },
+});
+type Message = typeof Message.Type;
+```
+
+Keep the `defineMessageUnion()` declaration and `type Message` alias adjacent. Construct values through the namespace (`Message.ClickedSubmit()`) and handle the union with `Message.match`. Never destructure constructors from `Message` or `OutMessage`; the owning namespace stays visible at every call site.
+
+Keep each case's payload object on one line when it fits. Let Oxfmt wrap payloads that need more space, so the declaration remains easy to scan as one variant per line.
+
+Messages are verb-first past-tense. Common prefixes: `Clicked*`, `Updated*` (input changes and external state updates), `Submitted*`, `Pressed*`, `Selected*`, `Succeeded*` / `Failed*` (paired async results), `Completed*` (every other Command result), `Got*` (child OutMessage in the Submodel pattern).
+
+## Debugging
+
+This project ships with `@foldkit/devtools-mcp` pre-wired. When the dev server is running and the app is open in a browser, `foldkit_*` MCP tools let you inspect Model, Message history, and time-travel. Reach for them before adding `console.log` whenever the question is about state or Message flow.
+
+## Going Deeper
+
+For Submodels and OutMessage, Subscriptions, Mount / ManagedResource / CustomElement, field validation, routing, accessibility, and the full convention set, read upstream Foldkit code at the installed release tag. The `examples/` directory and the production apps (`packages/typing-game/`, `packages/website/`) are the highest-fidelity references for any specific pattern.
+
+<!-- END upstream Foldkit conventions -->

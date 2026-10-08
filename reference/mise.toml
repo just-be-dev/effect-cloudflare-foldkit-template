@@ -1,0 +1,39 @@
+[settings]
+experimental = true
+pin = true
+
+[hooks]
+postinstall = "bun install"
+
+[env]
+_.path = "node_modules/.bin"
+
+[tasks.typecheck]
+run = "bun run typecheck"
+
+[tasks.lint]
+run = "bun run lint"
+
+[tasks.format]
+run = "bun run format"
+
+[tasks."format:check"]
+run = "bun run format:check"
+
+[tasks.test]
+run = "bun run test"
+
+[tasks.build]
+run = "bun run build"
+
+[tasks.dev]
+run = "bun run dev"
+
+[tasks.deploy]
+run = "bun run deploy --stage prod"
+
+[tasks.prepare]
+run = "bun run prepare"
+
+[tools]
+bun = "1.4.2"
