@@ -42,13 +42,13 @@ D1 adapters may acquire their database binding in the outer Effect and return a 
 
 `alchemy dev` uses stage `dev_$USER`, local Workers/DO/D1 data, and dev-mode Access bypass. Select `Alchemy.localState()` for dev and `Cloudflare.state()` for deployed stages using `Alchemy.ALCHEMY_DEV`. Local resource state must live beside the checkout's local database: shared deployment state can otherwise claim a migration was applied to a newly empty worktree database.
 
-Run `mise run dev` only after implementing the stack. Use the Website URL it prints; do not assume a fixed port. Workers AI, if selected, still makes real remote requests and needs credentials even in local dev.
+Run `mise run dev` from the root to start the included stack. Use the Website URL it prints; do not assume a fixed port. The starter provisions only a local Website and API Worker. Workers AI, if added, still makes real remote requests and needs credentials even in local dev.
 
 Configure a Cloudflare Alchemy profile for the new app with `bun alchemy profile edit --add Cloudflare`, or select an existing authorized profile via `ALCHEMY_PROFILE`. Never copy credentials/state from the source project. Deploys may offer to bootstrap Alchemy's Cloudflare-hosted state store; this changes shared infrastructure and needs authorization.
 
 ## Identity needs explicit authorization policy
 
-The source deployed Website admits Cloudflare account members and an optional 30-day Access service token. Treat that as a single-tenant prototype policy, not a universal default. Configure the new audience deliberately. Machine tokens do not necessarily identify a person; dev requests may have no email.
+The included stack inherits the source Website's Cloudflare account-member policy and 30-day machine-test Access service token. They are created only on deployment, not in dev. Treat this as a single-tenant prototype policy, not a universal default. Configure the new audience deliberately. Machine tokens do not necessarily identify a person; dev requests may have no email.
 
 Translate Access identity into a platform-independent, request-scoped service. Validate Access JWTs and their expected audience before relying on identity in production. Do not copy the prototype's “missing identity can approve” behavior. Authentication at the website and authorization of each application operation are different responsibilities.
 

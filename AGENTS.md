@@ -1,6 +1,8 @@
 # Effect / Cloudflare / Foldkit
 
-This repository starts as a documentation-first template. Before scaffolding, read `README.md` and `docs/`; reusable files live in `reference/`. Once bootstrapped, keep these rules and add the new product's layout, API, and invariants. Do not recreate the source project's automation application.
+This is a runnable starter. Read `README.md` and `docs/`, replace the sample domain/UI, and add the new product's layout, API, and invariants. Do not recreate the source project's automation application.
+
+`src/app-info/` owns the sample Schema/service. `src/http/api.ts` composes its health route. `src/platform/cloudflare/{stack,api,edge}.ts` declares resources, hosts the private API, and forwards requests. `src/ui/entry.ts` boots the counter definitions in `main.ts`. D1, Durable Objects, and AI are available dependencies but are not provisioned by default.
 
 ## Ownership and scope
 
@@ -37,7 +39,7 @@ This repository starts as a documentation-first template. Before scaffolding, re
 
 ## Verify before finishing
 
-After the reference files are moved to the root and the app is implemented:
+Run from the repository root:
 
 ```sh
 bun run typecheck && bun run lint && bun run test && bun run format:check
@@ -48,7 +50,7 @@ bun run typecheck && bun run lint && bun run test && bun run format:check
 - Use memory services for application tests. Native Worker, DO, D1, identity, and AI behavior needs local end-to-end checks with `mise run dev` and the URL it prints.
 - Test both sides of boundaries and failure/retry/concurrency cases that distinguish correct behavior from plausible errors. Memory tests do not establish native transactional guarantees.
 - UI tests use Foldkit Story/Scene. Render and inspect affected visual states before claiming visual changes are complete; use DOM/accessibility checks for interaction-only changes.
-- For this documentation-only template, check formatting, local links, config parsing, reference tool installation/typechecking/linting, the boundary test, and publication status. Do not claim the absent app builds or deploys.
+- For template maintenance, also check frozen installation, documentation links, config parsing, native API smoke checks, and publication status. Never confuse a passing UI build with a deployment.
 
 ## Dependencies and operational safety
 

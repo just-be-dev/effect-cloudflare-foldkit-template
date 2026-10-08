@@ -14,12 +14,15 @@
     "prepare": "effect-tsgo patch"
   },
   "dependencies": {
+    "@earendil-works/pi-ai": "1.0.2",
+    "@earendil-works/pi-durable": "1.0.2",
     "@effect/platform-browser": "4.0.0",
     "@effect/platform-bun": "4.0.0",
     "@foldkit/ui": "0.165.0",
     "@fontsource-variable/inter": "5.3.0",
     "@fontsource/ibm-plex-mono": "5.3.0",
     "@tailwindcss/vite": "4.3.3",
+    "agents": "0.26.0",
     "alchemy": "2.0.0-beta.81",
     "cn": "0.4.0",
     "effect": "4.0.0",

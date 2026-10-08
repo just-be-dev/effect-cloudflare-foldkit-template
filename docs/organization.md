@@ -1,6 +1,6 @@
 # Organize by ownership, not framework category
 
-The reusable shape is a domain-oriented backend, a platform adapter boundary, and an independently organized Foldkit frontend. Names below are placeholders, not folders you must create up front.
+The starter implements this shape with `src/app-info/`, `src/http/`, `src/platform/cloudflare/`, and `src/ui/`. The reusable principle is a domain-oriented backend, a platform adapter boundary, and an independently organized Foldkit frontend. The larger shape below is guidance for growth: placeholder names are not folders you must create up front.
 
 ```text
 alchemy.run.ts                     thin re-export of the platform stack
