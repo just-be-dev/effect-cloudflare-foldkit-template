@@ -1,94 +1,90 @@
-# Structuring Effect codebases
+# Architecture
 
-Organize around domain responsibilities and lifetimes. Use Effect to express those boundaries, not to decide them.
+Organize code around domains and lifetimes. Effect is how you express those boundaries; it doesn't decide them for you.
 
-These guidelines were extracted from a working Effect/Cloudflare application. They are principles to adapt, not a mandatory directory template. Examples involving workflows and replay apply only when the new product needs durable execution.
+## Group code by domain
 
-## Group code by domain and ownership
+Keep a domain's models, validation, operations, and service contracts together. Top-level `services/`, `schemas/`, and `layers/` folders spread one feature across the whole repo.
 
-Keep a domain's models, validation, operations, and service contracts together. Avoid top-level `services/`, `schemas/`, and `layers/` directories that scatter one responsibility across the repository.
+Split a module when part of it has its own state, invariants, dependencies, or lifecycle. A large file is a hint to look for that seam, not a reason to cut one where none exists.
 
-Split a module when a responsibility has its own state, invariants, dependencies, or lifecycle. File size is a reason to look for such a boundary, not a reason to invent one. Design sessions and execution coordination can evolve independently; arbitrary groups of helper functions cannot.
+A facade is fine when callers need one entry point. It should compose the pieces and join their results, and leave the business logic in the pieces.
 
-Keep a facade when callers need a single application interface. It should compose components and join their results, rather than retain the business logic that those components were extracted to own.
+## Isolate platform code
 
-## Isolate platform implementations
+SDK bindings, database adapters, deployment declarations, native entry points, and runtime glue go under `platform/<provider>/`. Service contracts and business rules stay in their domains.
 
-Put SDK bindings, database adapters, deployment declarations, native entry points, and runtime integration under `platform/<provider>/`. Keep service contracts and business rules in their owning domains.
+Platform code imports domains, never the reverse. Domain code doesn't touch platform modules, deployment libraries, or platform globals. `src/platform/boundary.test.ts` enforces this.
 
-Dependencies point from platform adapters into domains, never back. Domain code should not import platform modules, deployment libraries, or platform-native globals. Enforce this boundary with an import-boundary test or lint rule.
+Only move code into `platform/` if it actually depends on the platform. Portable logic that the platform happens to call stays in the domain. Skip wrappers that just rename SDK methods.
 
-Separation is useful when it removes actual platform dependencies. Do not move portable logic into a platform directory merely because the platform currently calls it. Likewise, do not add generic wrappers that expose the same SDK operations under different names.
+## Services describe capabilities; layers build them
 
-## Services describe capabilities; layers construct implementations
+Name a service after what callers need (`EntityStore`), not how it's built (D1). The contract should express real operations and guarantees, not mirror a vendor API.
 
-Name a service for what callers need, such as `EntityStore`, rather than how it is implemented, such as D1. A contract should express meaningful operations and guarantees, not mirror a vendor API.
+Put validation and merge rules in shared domain code so the memory and production implementations follow the same rules. Adapters translate storage, transport, and runtime details.
 
-Keep business validation and merging rules in shared domain code so memory and production implementations obey the same rules. An adapter should translate storage, transport, or runtime details rather than duplicate policy.
+Use `Context.Service` for capabilities supplied through the environment. Many internal components can just be an Effect that returns a record of operations, with dependencies passed in directly. Add indirection when it protects a boundary or removes real complexity.
 
-Use `Context.Service` for capabilities supplied through the environment. Not every internal component needs a service tag: an Effect constructor returning an operation record is often sufficient when dependencies are explicitly supplied. Add indirection only when it protects a meaningful boundary or removes real complexity.
+Compose layers where the app picks its implementations. Business operations don't choose infrastructure.
 
-Compose layers where the application's implementation choices are made. Keep infrastructure selection out of business operations.
+## Be explicit about lifetimes
 
-## Make lifetime and construction sites explicit
+For each resource and mutable value, decide whether it belongs to the application, a request, a tenant, a session, or an execution. Build it at that boundary.
 
-Decide whether each resource and mutable value belongs to the application, request, tenant, session, or execution. Construct it at that boundary and capture the dependencies appropriate to that lifetime.
+Use scoped layers for anything that needs cleanup. Watch for locks that get recreated per operation, or request identity that leaks across requests. A lock only protects callers sharing the same instance, and an in-memory lock can't coordinate separate processes.
 
-Use scoped layers for resources requiring cleanup. Do not accidentally recreate a synchronization lock for every operation or share request identity across requests. A lock protects only callers that share its instance; an in-memory lock does not coordinate separate processes.
+When a framework separates deploy-time construction from runtime handling, respect it. Declaring a binding doesn't make it usable yet. Acquire request- or instance-bound capabilities where they're valid.
 
-Where a framework separates deployment-time construction from runtime handling, respect that distinction. Declaring a binding does not mean it can already perform storage or network operations. Acquire request- or instance-bound capabilities where they are valid.
+## Application operations own whole use cases
 
-## Application operations own complete use cases
+HTTP handlers decode input, call an application operation, and encode the result. They don't finish the job by writing to another store afterwards.
 
-Transport handlers decode inputs, invoke an application operation, and encode its result. They should not finish business work by writing another store after the application returns.
+Ordering, authorization, transactions, and partial-failure handling live in the operation that owns the use case. If saving means validating, storing a snapshot, updating subscriptions, and touching a directory, callers shouldn't need to know that sequence.
 
-Put ordering, authorization, transaction boundaries, and partial-failure policy inside the operation that owns the use case. For example, saving may require validation, snapshot storage, subscription changes, and a directory update. Callers should not need to know that sequence.
+Separate required writes from best-effort ones. Know what's been written after each possible failure and how a retry recovers. A successful return should mean something specific.
 
-Distinguish required writes from best-effort updates. Specify what remains written after each failure and how retries recover. A successful return should have a clear meaning.
+## Keep capabilities together when they share an invariant
 
-## Preserve capabilities that share an invariant
+If persistence and job scheduling must commit or roll back together, expose them as one capability. Make the transaction part of the contract and test it against each implementation.
 
-Do not split persistence and job scheduling into independent capabilities when they must commit or roll back together. Keep the transaction guarantee visible in the contract and test it in implementations.
+Two unrelated stores don't become atomic because one layer provides both. Without a shared transaction, write down the partial-failure policy and make retries safe.
 
-Conversely, unrelated stores do not become atomic merely because one layer supplies both. When no shared transaction exists, define the partial-failure policy explicitly and make recovery or retries safe. Do not imply all-or-nothing behavior that the infrastructure cannot provide.
+## Separate representations
 
-## Distinguish representations and authorities
+Persisted records, interpreter working values, and replay journals each get their own name and owner. Be clear about which one drives execution, which is rebuilt, and which is shown to people. If the journal is authoritative, never seed execution from a display record.
 
-Give persisted application records, interpreter working values, and replay journals separate names and owners. State which representation controls execution, which is reconstructed, and which is displayed to people. Never seed execution from a display record when the journal is authoritative.
+Decode everything untrusted with Schema: HTTP input, storage reads, remote responses, configuration, model output. Decide what happens when stored data no longer decodes instead of treating every failure as "missing".
 
-Use Schema to decode untrusted boundaries, including HTTP inputs, storage reads, remote responses, configuration, and model output. Define an explicit policy for incompatible persisted data rather than silently treating every decoding failure as missing data.
+Brand IDs that look the same on the wire but mean different things, like a run ID and an execution ID. Use discriminated unions instead of piles of independent flags.
 
-Brand identifiers that have identical wire shapes but different meanings, such as a run ID and an execution ID. Decode them at boundaries; preserve their serialized values. Use discriminated unions where they prevent invalid combinations of state, rather than accumulating independent flags.
+Storage keys, callback payloads, workflow results, and journal names are compatibility contracts. Renaming one can break work already in flight.
 
-Treat storage keys, callback payloads, workflow results, and journal names as compatibility contracts. A rename can be a behavior change when existing work depends on it.
+## Read configuration at the edges
 
-## Read configuration at composition boundaries
+Use Effect `Config` for runtime configuration. Validate it before building services and pass the resolved values in. Domain code doesn't read environment variables.
 
-Use Effect `Config` for runtime configuration, validate it before constructing services, and pass resolved values into implementations. Domain operations should not read environment variables or know where configuration comes from.
+Give secrets only to the implementation that needs them. They don't belong in business models or stored workflow definitions.
 
-Keep deployment-time declarations distinct from request-time capabilities. Supply secrets to the implementation that needs them; do not include them in business models or persisted workflow definitions.
+Add a config option when the app needs the choice.
 
-Avoid hypothetical configuration. Add an option when the application needs a choice, not merely because a value could become configurable.
+## Test the guarantees
 
-## Test architectural guarantees, not just happy paths
+Memory implementations cover application behavior; integration tests cover native platform behavior. A passing memory test says nothing about the production adapter's transactions.
 
-Use memory implementations to test application behavior and integration tests to check native platform behavior. A memory adapter passing a test does not prove that a production adapter provides the same transaction or runtime guarantees.
+Test partial failures, retries, concurrent updates, and replay with inputs that would catch a plausible bug. For example: change a display record while an execution is waiting and check that replay still uses the journaled values, or overlap two parallel reports and check that both survive.
 
-Test partial failures, retries, concurrent updates, and replay with inputs that distinguish correct behavior from plausible mistakes. For example, change a displayed record while an execution waits and verify that replay still uses journaled values; make parallel reports overlap and verify that both results survive.
-
-Refactor ownership separately from changing behavior. Preserve serialized contracts and existing failure policies unless changing them is an explicit part of the task. Verify each reviewable stage before committing it.
+Refactor structure and change behavior in separate steps. Keep serialized contracts and failure policies as they are unless the task is to change them.
 
 ## Review questions
 
 - Who owns this rule and the data it changes?
 - Where is each dependency supplied, and how long does it live?
-- Is this abstraction protecting a real boundary?
-- What does success guarantee, and what remains written after failure?
-- Can this operation safely be retried or replayed?
-- Which persisted contracts must remain compatible?
-- Which test would fail if that guarantee were broken?
-
-A reader should be able to answer these questions without tracing the entire application.
+- What boundary does this abstraction protect?
+- What does success guarantee, and what's left behind after a failure?
+- Is this safe to retry or replay?
+- Which stored contracts have to stay compatible?
+- Which test fails if the guarantee breaks?
 
 ## References
 

@@ -1,80 +1,79 @@
-# Alchemy declares resources; Cloudflare hosts implementations
+# Cloudflare
 
-Use Alchemy **2** (`2.0.0-beta.81` in the snapshot), not the v1 `await alchemy(...)` API. The stack is an Effect program. A root `alchemy.run.ts` re-exports the resources/types and default Stack from `src/platform/cloudflare/stack.ts`.
+Infrastructure is declared with Alchemy v2. The stack is an Effect program in `src/platform/cloudflare/stack.ts`, and `alchemy.run.ts` re-exports it.
 
-## The Website and API are public
+## Topology
 
 ```text
-Browser / machine client
+Browser / client
           │
           ▼
-Public Website.Foldkit ── static assets
+Website (Cloudflare.Website.Foldkit) ── static assets
           │ /api/*, runWorkerFirst
           ▼
-edge.ts ── service binding ── public Api Worker ◀── direct client (workers.dev)
-                                      │
-                                      ├── domain services
-                                      ├── optional D1 adapters
-                                      └── optional Durable Objects / AI
+edge.ts ── service binding ── Api Worker ◀── direct client (workers.dev)
+                                   │
+                                   ├── domain services
+                                   └── D1 / Durable Objects / AI, when added
 ```
 
-Declare the website with `Cloudflare.Website.Foldkit`, the API with `Cloudflare.Worker`, and `env: { API: Api }` on the website. Set `assets.runWorkerFirst: ["/api/*"]`; leave `workersDev` at Alchemy's default `true` so the API has a stable workers.dev URL and version preview URLs. Infer edge environment types with `Cloudflare.InferEnv<typeof Website>`. The edge only forwards to the binding; HTTP routing and business work belong elsewhere.
+The Website is a `Cloudflare.Website.Foldkit` with `env: { API: Api }` and `assets.runWorkerFirst: ["/api/*"]`. The API is a `Cloudflare.Worker` that keeps Alchemy's default `workersDev: true`, which gives it a stable workers.dev URL and per-version preview URLs. `edge.ts` gets its env type from `Cloudflare.InferEnv<typeof App>` and only forwards requests to the binding. Routing and business logic live in the API.
 
-No Cloudflare Access policy or service token is declared. The API's `/api/*` routes are public both directly and through the Website. If the new product needs protected operations, enforce authentication and authorization in the API/application, not just in the forwarding edge.
+Both Workers are public. When the product needs protected operations, enforce authentication and authorization in the API, since requests can arrive directly or through the Website.
 
-The source uses compatibility date `2026-10-04` on its Workers/Website. Choose and test a date deliberately for the new project. Do not silently rely on a changed default.
+Both Workers use compatibility date `2026-10-04`. When you move it, test the new date rather than relying on Cloudflare's default.
 
-## Native telemetry includes Effect spans
+## Telemetry
 
-`stack.ts` explicitly enables persisted invocation logs and native traces on the Website. `api.ts` enables persisted invocation logs and provides `Cloudflare.Telemetry({ headSamplingRate: 1, persist: true })` on its outer Effect. This layer contributes the API's trace configuration at plan time and builds a fresh native Effect tracer per invocation. Keep it on the host, not on domain services or a cached cross-request runtime.
+`stack.ts` turns on persisted invocation logs and traces for the Website. `api.ts` turns on persisted invocation logs and provides `Cloudflare.Telemetry({ headSamplingRate: 1, persist: true })` on the Worker's outer Effect. That layer adds the API's trace configuration at plan time and builds a fresh tracer for each invocation. Keep it on the Worker host, not on domain services or a runtime shared across requests.
 
-Enabling `observability.traces` alone records platform spans but does not export Effect spans. The Telemetry layer mirrors `Api.request`, future `Effect.withSpan`, and named `Effect.fn` spans into Cloudflare's native waterfall alongside supported platform operations such as fetch and D1. It requires a compatibility date of at least `2026-07-28`; the starter's `2026-10-04` is sufficient. There is no external collector, export credential, or browser analytics script.
+`observability.traces` on its own records Cloudflare's platform spans. The Telemetry layer adds `Api.request` and any `Effect.withSpan` or `Effect.fn` spans to the same waterfall, next to platform operations like fetch and D1. It needs a compatibility date of `2026-07-28` or later. Don't set `observability.traces` explicitly on the API; an explicit setting overrides what the layer contributes.
 
-Logs and traces use sampling rate `1` (100%) and dashboard persistence. Tune the Website's logs/traces, the API's logs, and its Telemetry layer together for production volume and cost. Do not explicitly disable the API's `observability.traces`: an explicit trace configuration takes precedence over the layer's contributed configuration.
+Sampling is `1` (every request) with dashboard persistence. When traffic grows, tune the Website's logs and traces, the API's logs, and the API's Telemetry layer together.
 
-After an authorized deploy, request `/api/health`, then inspect each deployed Worker under **Workers & Pages → Observability**. Confirm an API invocation and an `Api.request` span; local tests cannot prove Cloudflare dashboard ingestion. Requests served entirely as static assets do not invoke the edge handler. Native tracing forwards scalar span attributes and records Effect completion; span events, links, and non-scalar attributes are not mirrored.
+To check it after a deploy, request `/api/health` and open each Worker under **Workers & Pages → Observability**. You should see an API invocation with an `Api.request` span. Requests served entirely from static assets skip the edge handler. Native tracing forwards scalar span attributes and completion status; span events, links, and structured attributes are dropped.
 
-Never log secrets, authentication headers, request/response bodies, or arbitrary entity data. Prefer stable operation names and non-sensitive attributes. Review Cloudflare's collected request metadata and retention before handling personal data.
+Keep secrets, auth headers, request and response bodies, and entity data out of logs and spans. Use stable operation names and harmless attributes. Check what request metadata Cloudflare collects and how long it keeps it before you handle personal data.
 
-## Respect plan-time versus runtime
+## Plan time and runtime
 
-Worker and Durable Object declarations have two phases:
+Worker and Durable Object declarations run in two phases:
 
-| Phase                                | Allowed work                                                                                                 |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| Outer Effect: plan time / cold start | Binding declarations, namespaces, resource selection, layer construction                                     |
-| Returned handler / instance Effect   | Storage operations, raw AI binding access, durable callbacks, request headers, runtime-bound service methods |
+| Phase                                | Use it for                                                                                          |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Outer Effect: plan time / cold start | Declaring bindings and namespaces, choosing resources, building layers                              |
+| Returned handler / instance Effect   | Storage operations, raw AI binding calls, durable callbacks, request headers, runtime-bound methods |
 
-Plan time runs under Bun and imports everything reached from `alchemy.run.ts`. A top-level module that loads `cloudflare:*` breaks that path. Acquire native capabilities in the appropriate runtime instead.
+Plan time runs under Bun and imports everything reachable from `alchemy.run.ts`. A module that loads `cloudflare:*` at the top level breaks that, so acquire native capabilities inside the runtime phase.
 
-D1 adapters may acquire their database binding in the outer Effect and return a layer that requires `Alchemy.RuntimeContext`. Provide that layer per request or instance, where the context exists. Service methods capture that context so callers use portable capabilities without supplying native runtime requirements.
+A D1 adapter can grab its database binding in the outer Effect and return a layer that requires `Alchemy.RuntimeContext`. Provide that layer per request or per instance, where the context exists. The service methods capture the context, so callers get a portable capability.
 
-## Local and deployed state are different
+## Local and deployed state
 
-`alchemy dev` uses stage `dev_$USER` and local Workers/DO/D1 data. Select `Alchemy.localState()` for dev and `Cloudflare.state()` for deployed stages using `Alchemy.ALCHEMY_DEV`. Local resource state must live beside the checkout's local database: shared deployment state can otherwise claim a migration was applied to a newly empty worktree database.
+`alchemy dev` uses stage `dev_$USER` with local Workers, Durable Object, and D1 data. `stack.ts` picks `Alchemy.localState()` in dev and `Cloudflare.state()` for deployed stages based on `Alchemy.ALCHEMY_DEV`. Local resource state has to sit next to the checkout's local database. If it were shared, a fresh worktree's empty database could be marked as already migrated.
 
-Run `mise run dev` from the root to start the included stack. Use the Website URL it prints; do not assume a fixed port. The starter provisions only a local Website and API Worker. Workers AI, if added, still makes real remote requests and needs credentials even in local dev.
+Run `mise run dev` from the repo root and use the Website URL it prints; the port isn't fixed. Workers AI calls are real remote requests even in local dev and need credentials.
 
-Configure a Cloudflare Alchemy profile for the new app with `bun alchemy profile edit --add Cloudflare`, or select an existing authorized profile via `ALCHEMY_PROFILE`. Never copy credentials/state from the source project. Deploys may offer to bootstrap Alchemy's Cloudflare-hosted state store; this changes shared infrastructure and needs authorization.
+To deploy, add a Cloudflare profile with `bun alchemy profile edit --add Cloudflare` or select one with `ALCHEMY_PROFILE`. The first deploy may offer to create Alchemy's Cloudflare-hosted state store. That changes shared infrastructure, so get approval first.
 
-## Identity needs explicit authorization policy
+## Identity and authorization
 
-The starter has no authentication or authorization requirement for its public health endpoint. Do not assume forwarded requests carry a verified identity, or introduce Cloudflare Access as an inherited default. Choose the new product's authentication scheme when it needs protected data or operations.
+When the product needs protected data, pick an authentication scheme. Don't assume forwarded requests carry a verified identity.
 
-Translate verified identity into a platform-independent, request-scoped service and enforce authorization inside application operations. Do not copy the prototype's “missing identity can approve” behavior. Authenticating a person and authorizing each operation are different responsibilities.
+Turn verified identity into a platform-independent, request-scoped service and check authorization inside application operations. Treat a missing identity as unauthenticated. Knowing who someone is and deciding what they can do are separate jobs.
 
-The static CSP file applies to asset responses. Define any required security headers for Worker-generated API responses separately. Dev-server requirements are not grounds to loosen deployed CSP.
+`public/_headers` sets the CSP for static assets. Set security headers for API responses in the API itself. Keep the deployed CSP strict even if the dev server needs something looser.
 
-## Persistence and durable work are optional
+## Adding persistence and durable work
 
-- D1: declare `Cloudflare.D1.Database` with `migrations: "./migrations"`. Alchemy tracks applied migrations by hash in `__alchemy_migrations`; add new numbered files instead of editing applied ones. Start with the new product's schema, not the source seed data.
-- Durable Objects: use them when instance-local storage, coordination, or durable callbacks are actually needed. Keep native hosts thin and delegate business operations to domain code.
-- `Alchemy.makeCallback` delivers at least once. Callback names/payloads, schedule keys, storage keys, and replay journal names become persisted contracts. Make callbacks idempotent before shipping.
-- If state writes and scheduling must be atomic, expose one host capability that guarantees their shared transaction and prove it on the native implementation. Separate D1/DO stores cannot share that transaction.
-- Deterministic replay must rebuild working values from its authoritative journal; network effects belong in journaled Activities. Do not add a replay engine merely because the source project had one.
+- D1: declare `Cloudflare.D1.Database` with `migrations: "./migrations"`. Alchemy tracks applied migrations by hash in `__alchemy_migrations`, so add new numbered files and leave applied ones alone.
+- Durable Objects: use them for instance-local storage, coordination, or durable callbacks. Keep the host class thin and call into domain code.
+- `Alchemy.makeCallback` delivers at least once. Callback names and payloads, schedule keys, storage keys, and replay journal names all become stored contracts. Make callbacks idempotent before shipping.
+- If a state write and a schedule must be atomic, expose one host capability that owns that transaction and test it on the native implementation. Separate D1 and Durable Object stores can't share a transaction.
+- Deterministic replay rebuilds working values from its journal. Network calls go in journaled Activities.
 
-## Authoritative references
+## References
 
-- [Alchemy documentation index](https://alchemy.run/llms.txt); append `.md` to documentation page URLs.
-- Installed `node_modules/alchemy/src`: final reference for this pinned beta.
+- [Alchemy documentation index](https://alchemy.run/llms.txt). Append `.md` to any docs page URL for Markdown.
+- `node_modules/alchemy/src`, the final word on the installed version.
 - [Cloudflare Workers](https://developers.cloudflare.com/workers/), [Workers Observability](https://developers.cloudflare.com/workers/observability/), [Durable Objects](https://developers.cloudflare.com/durable-objects/), and [D1](https://developers.cloudflare.com/d1/).

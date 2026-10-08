@@ -9,7 +9,7 @@ index 69ebcccc40766ccd1e8c6ff9a72601d380f8b8d8..69cb45506513243c551aec23d560693a
 -    // NOTE: The MCP server cannot verify a development HTTPS certificate, so
 -    // HTTPS uses a separate loopback listener.
 -    const maybeHttpServer = Option.filter(Option.fromNullishOr(server.httpServer), () => server.config.server.https === undefined);
-+    // PATCH(automations): always use a dedicated loopback listener. Hosting the
++    // PATCH: always use a dedicated loopback listener. Hosting the
 +    // relay on Vite's httpServer breaks under `alchemy dev`, whose Cloudflare
 +    // Vite integration forwards every non-`vite` upgrade to workerd and
 +    // destroys the socket the relay already accepted (close 1006 within ms).

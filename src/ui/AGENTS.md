@@ -2,50 +2,50 @@
 
 ## Project instructions
 
-These instructions apply to `src/ui/` and its descendants. The UI uses Foldkit, a framework built on Effect-TS and architected like Elm.
+These instructions cover `src/ui/` and everything under it. The UI uses Foldkit, an Elm-style framework built on Effect.
 
-- Do not vendor the Foldkit repository or offer to add a subtree. Import from installed npm packages.
-- Keep runtime boot in `src/ui/entry.ts` and the definitions it boots in their own modules (see Layout below). Server code lives outside `src/ui/` (see the root `AGENTS.md`). Alchemy runs the Vite build for the Website Worker on deploy and the Vite dev server under `alchemy dev`. `bun run build` is only a local check.
-- Keep Foldkit architectural lint rules scoped to `src/ui/`.
-- Use installed package types and upstream source at the `foldkit@<installed-version>` GitHub tag, not `main`. Source and examples are authoritative when these conventions or online docs disagree with the installed APIs.
+- Import Foldkit from the installed npm packages.
+- Runtime boot lives in `src/ui/entry.ts`; the definitions it boots live in their own modules (see Layout). Server code lives outside `src/ui/` (see the root `AGENTS.md`). Alchemy runs the Vite dev server under `alchemy dev` and the Vite build for the Website Worker on deploy. `bun run build` is a local check.
+- Foldkit's architecture lint rules apply to `src/ui/` only.
+- Check APIs against the installed package types and the upstream source at the `foldkit@<installed-version>` GitHub tag. When these conventions or the online docs disagree with the installed APIs, the source and examples win.
 
 ## Layout
 
 The app follows [Foldkit's project organization](https://foldkit.dev/patterns/project-organization):
 
-- `entry.ts` boots the runtime. `main.ts` holds the root `init`; `model.ts`, `message.ts`, and `command.ts` hold the root Model, Messages, and Commands. `constant.ts` holds DOM ids and limits that update and view share. `route.ts` maps URLs to pages.
-- The root app owns cross-page state and routing. As responsibilities emerge, split update and view by area under `update/` and `view/`; keep their matcher/page shell separate from named transitions and views. Import each folder through its `index.ts` when a barrel has consumers. A small app can keep pure definitions together in `main.ts`.
-- `page/` holds independent Submodels. Each owns the definitions and Commands it needs, plus `story.test.ts` and `scene.test.ts`. Import pages as namespaces where useful. A page never imports the root app; keep dependencies pointing inward and communicate with the parent through Messages/OutMessages.
-- `domain/` holds pure business/UI transformations with their Schema and operations. Reuse portable backend-domain models rather than duplicating them unnecessarily.
-- Shared leaves know nothing about the root app: `api.ts` (HTTP helpers for Commands), optional `theme.ts` (Flags and the saved theme), `lib/` (`cn`, `icon`, text formatting, dates), and `components/` (shared components plus vendored foldcn copies in `components/ui/`).
-- Root `story.test.ts` and `scene.test.ts` cover cross-page flows and parent composition. Colocate fixtures at the narrowest shared scope.
+- `entry.ts` boots the runtime. `main.ts` holds the root `init`; `model.ts`, `message.ts`, and `command.ts` hold the root Model, Messages, and Commands. `constant.ts` holds DOM ids and limits shared by update and view. `route.ts` maps URLs to pages.
+- The root app owns cross-page state and routing. As it grows, split update and view by area under `update/` and `view/`, keeping the matcher and page shell apart from named transitions and views. Import each folder through an `index.ts` once something consumes it. A small app can keep all its pure definitions in `main.ts`.
+- `page/` holds page Submodels. Each owns its definitions and Commands plus a `story.test.ts` and `scene.test.ts`. Pages never import the root app; they talk to the parent through Messages and OutMessages.
+- `domain/` holds pure UI and business transformations with their Schema and operations. Reuse backend domain models where they fit.
+- Shared leaves know nothing about the root app: `api.ts` (HTTP helpers for Commands), `theme.ts` (Flags and saved theme), `lib/` (`cn`, icons, text and date formatting), and `components/` (shared components, with foldcn copies in `components/ui/`).
+- Root `story.test.ts` and `scene.test.ts` cover cross-page flows and parent composition. Put fixtures at the narrowest shared scope.
 
 ## Styling and foldcn
 
-The UI is styled with Tailwind CSS v4 and [foldcn](https://foldcn.elianiva.com), a shadcn-style registry of copy-paste Foldkit components. Agent docs live at https://foldcn.elianiva.com/llms.txt, and every page has a Markdown twin at `/docs/<name>.md`.
+The UI uses Tailwind CSS v4 and [foldcn](https://foldcn.elianiva.com), a shadcn-style registry of copy-paste Foldkit components. Agent docs are at https://foldcn.elianiva.com/llms.txt, and every page has a Markdown version at `/docs/<name>.md`.
 
-- Vendored components live in `src/ui/components/ui/`: badge, bubble, button, empty, input, message, and textarea. `cn` lives in `src/ui/lib/utils.ts`; add other shared helpers there only as needed. Import components through the `@/` alias, which maps to `src/ui/` in `tsconfig.json` and `vite.config.ts`. This project owns the copies, so edit them as needed.
-- Add a component with `bunx shadcn@latest add @foldcn/<name>`. `components.json` already registers the namespace. Review the diff afterwards, because the CLI may also edit `src/ui/styles.css` or `package.json`.
-- Never install the `@foldcn/foldcn` base item. Its dependency pins can conflict with the exact versions here. The included components' theme mapping is already in `src/ui/styles.css`, using the starter's neutral palette rather than the source application's stylesheet.
-- Theme tokens belong in `src/ui/styles.css`; use semantic tokens such as `bg-card` and `text-muted-foreground` rather than raw colors. Choose the new product's visual language instead of inheriting the source branding. If adding a saved theme, make system preference and an explicit `data-theme` choice agree across Tailwind's dark variant, boot Flags, the persistence Command, and a same-origin pre-paint script.
-- Fonts are self-hosted through Fontsource and imported in `entry.ts`. Inter and IBM Plex Mono are included as optional defaults. The CSP in `public/_headers` allows only `font-src 'self'`, so don't load fonts or stylesheets from a CDN.
+- Components live in `src/ui/components/ui/`: badge, bubble, button, empty, input, message, and textarea. `cn` is in `src/ui/lib/utils.ts`. Import through the `@/` alias, which maps to `src/ui/` in `tsconfig.json` and `vite.config.ts`. The project owns these copies, so edit them freely.
+- Add a component with `bunx shadcn@latest add @foldcn/<name>`; `components.json` already registers the namespace. Review the diff afterwards, since the CLI may also touch `src/ui/styles.css` or `package.json`.
+- Never install the `@foldcn/foldcn` base item. Its dependency pins can conflict with the exact versions here. The theme mapping the components need is already in `src/ui/styles.css`.
+- Theme tokens live in `src/ui/styles.css`. Use semantic tokens like `bg-card` and `text-muted-foreground` instead of raw colors. For a saved theme, keep the system preference and an explicit `data-theme` in sync across Tailwind's dark variant, boot Flags, the persistence Command, and a same-origin pre-paint script.
+- Fonts are self-hosted with Fontsource and imported in `entry.ts`; Inter and IBM Plex Mono are installed. The CSP in `public/_headers` sets `font-src 'self'`, so load fonts and stylesheets from this origin.
 
-Upstream paths below are relative to [the Foldkit repository at `foldkit@0.165.0`](https://github.com/foldkit/foldkit/tree/foldkit@0.165.0), not this project:
+Upstream paths below are relative to the Foldkit repository at the installed release tag (`https://github.com/foldkit/foldkit/tree/foldkit@<version>`):
 
-- `examples/`: runnable examples for idiomatic patterns.
+- `examples/`: runnable examples of idiomatic patterns.
 - `packages/foldkit/src/`: framework source and API signatures.
-- `packages/typing-game/client/src/` and `packages/website/src/`: production apps for Submodels and OutMessage patterns.
+- `packages/typing-game/client/src/` and `packages/website/src/`: production apps showing Submodels and OutMessages.
 
-Read https://foldkit.dev/ai/overview.md and https://foldkit.dev/llms.txt for online references.
+Online references: https://foldkit.dev/ai/overview.md and https://foldkit.dev/llms.txt.
 
 ## After a Foldkit upgrade
 
-The conventions below are adapted from the upstream `FOLDKIT.md` for Foldkit **0.165.0**. Whenever Foldkit is updated, refresh them in the same change:
+The conventions below come from the upstream `FOLDKIT.md`. Refresh them in the same change as any Foldkit upgrade:
 
-1. Determine the installed version from `node_modules/foldkit/package.json`.
-2. Fetch `packages/create-foldkit-app/templates/base/FOLDKIT.md` from the matching `foldkit@<version>` tag: `https://raw.githubusercontent.com/foldkit/foldkit/foldkit@<version>/packages/create-foldkit-app/templates/base/FOLDKIT.md`. For a canary version, use the full source commit named by its version instead of a release tag.
-3. Refresh the conventions between the markers below from that template. Adapt upstream repository paths to online references and omit scaffolder ownership, vendoring, and subtree-upgrade instructions. Do not recreate a separate project `FOLDKIT.md`.
-4. Preserve this project's instructions and upgrade procedure above the markers. Update the recorded version and release-tagged links, and check the conventions against the installed APIs.
+1. Read the installed version from `node_modules/foldkit/package.json`.
+2. Fetch `https://raw.githubusercontent.com/foldkit/foldkit/foldkit@<version>/packages/create-foldkit-app/templates/base/FOLDKIT.md`. For a canary version, use the commit named in its version instead of a release tag.
+3. Replace the content between the markers below with that template. Turn upstream repository paths into online references, point app paths at `src/ui/`, and leave out scaffolder ownership, vendoring, and subtree-upgrade instructions. Keep everything in this file.
+4. Keep this project's sections above the markers, and check the refreshed conventions against the installed APIs.
 
 <!-- BEGIN upstream Foldkit conventions -->
 
@@ -117,9 +117,9 @@ For DOM operations (focus, scroll, modals, scroll lock), Foldkit ships a `Dom` m
 
 ### File Organization
 
-The invariant: keep the runtime boot separate from the pure definitions. `src/entry.ts` calls `Runtime.makeApplication` and `Runtime.run`, and `index.html` references it. The definitions (Model, Messages, init, update, view, Commands) never call `Runtime.run`, so they stay importable from tests without booting a runtime as a side effect. Never call `Runtime.run` from `main.ts`.
+The invariant: keep the runtime boot separate from the pure definitions. `src/ui/entry.ts` calls `Runtime.makeApplication` and `Runtime.run`, and `index.html` references it. The definitions (Model, Messages, init, update, view, Commands) never call `Runtime.run`, so they stay importable from tests without booting a runtime as a side effect. Never call `Runtime.run` from `main.ts`.
 
-For a small app the definitions all fit in one `src/main.ts`. Split a unit into its own file when it has _both_ a distinct reason to change _and_ a name you'd give it unprompted: the pure domain core into `timer.ts` or `domain.ts`, the view into `view.ts` (or a `components/` directory), a Command's owned resource into its own module. Split on that revealed seam, not on line count alone. A file that has grown large is _evidence_ a seam has formed, so treat its size as a prompt to re-check for one. Two splits are forced: extract Messages to `message.ts` when Commands need the constructors (this breaks the cycle between `command.ts` and `main.ts`), and colocate Commands with the update that returns them. Exemplars: counter and stopwatch are a single `main.ts`; kanban splits `domain` / `command` / `message` / `model`; typing-game splits views by page.
+For a small app the definitions all fit in one `src/ui/main.ts`. Split a unit into its own file when it has _both_ a distinct reason to change _and_ a name you'd give it unprompted: the pure domain core into `timer.ts` or `domain.ts`, the view into `view.ts` (or a `components/` directory), a Command's owned resource into its own module. Split on that revealed seam, not on line count alone. A file that has grown large is _evidence_ a seam has formed, so treat its size as a prompt to re-check for one. Two splits are forced: extract Messages to `message.ts` when Commands need the constructors (this breaks the cycle between `command.ts` and `main.ts`), and colocate Commands with the update that returns them. Exemplars: counter and stopwatch are a single `main.ts`; kanban splits `domain` / `command` / `message` / `model`; typing-game splits views by page.
 
 Use uppercase section headers (`// MODEL`, `// MESSAGE`, `// INIT`, `// UPDATE`, `// COMMAND`, `// VIEW`) for wayfinding.
 

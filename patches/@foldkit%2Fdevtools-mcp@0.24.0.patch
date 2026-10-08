@@ -10,7 +10,7 @@ index 5a4ceb26f220f96735d8554a60f13cada0fbbb43..8501f0e92e7e518b033ffee2f37a48ad
  const REQUEST_TIMEOUT = Duration.seconds(10);
  const INITIAL_RECONNECT_DELAY = Duration.millis(500);
  const MAX_RECONNECT_DELAY = Duration.seconds(30);
-+// PATCH(automations): a socket that closes this soon after opening counts as a
++// PATCH: a socket that closes this soon after opening counts as a
 +// failed attempt. Otherwise a relay that accepts then drops (e.g. under
 +// `alchemy dev`) makes the client reconnect in a tight loop.
 +const MIN_STABLE_CONNECTION = Duration.seconds(5);

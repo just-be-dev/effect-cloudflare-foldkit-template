@@ -1,44 +1,46 @@
-# A versioned setup, not a collection of latest tags
+# Tooling
 
-Root `package.json` includes every source direct dependency and pins its resolved version as of 2026-10-08. `bun.lock` retains the source transitive resolutions rather than fetching newer compatible ranges. Exact pins intentionally make upgrades a reviewed decision; this snapshot will need maintenance.
+Every dependency in `package.json` is pinned to an exact version, and `bun.lock` locks the rest of the tree. Upgrades are deliberate.
 
-| Tool / package group                 | Snapshot                    | Role                                                         |
-| ------------------------------------ | --------------------------- | ------------------------------------------------------------ |
-| Bun / mise                           | Bun 1.4.2                   | Runtime, package manager, tests, tool/task management        |
-| TypeScript                           | 7.0.2                       | Strict native compiler via `tsc --noEmit`                    |
-| Effect + browser/Bun platforms       | 4.0.0                       | Schemas, services, errors, concurrency, platform runtime     |
-| Effect language service / tsgo patch | 0.87.3 / 0.48.0             | Editor diagnostics and patched native compiler               |
-| Alchemy                              | 2.0.0-beta.81               | Effect-native Cloudflare infrastructure and local dev        |
-| Foldkit / @foldkit/ui                | 0.165.0                     | Elm-style Effect UI and UI primitives                        |
-| Foldkit Vite / DevTools MCP / lint   | 0.26.0 / 0.24.0 / 0.15.1    | Build integration, state inspection, UI architecture rules   |
-| Vite                                 | 8.3.2                       | UI dev server/bundler, orchestrated by Alchemy               |
-| Tailwind + Vite plugin               | 4.3.3                       | Token-based CSS and Vite integration                         |
-| Oxfmt / Oxlint                       | 0.71.0 / 1.86.0             | Formatting and linting                                       |
-| Effect Oxlint plugin                 | 0.6.0                       | Selected Effect guardrails                                   |
-| Cloudflare types / workerd override  | 5.20261004.1 / 1.20261001.1 | Native host types and source runtime compatibility pin       |
-| Optional UI assets                   | See manifest                | Self-hosted Fontsource fonts, Lucide, `cn`, `tw-animate-css` |
+| Tool / package group                 | Role                                                       |
+| ------------------------------------ | ---------------------------------------------------------- |
+| Bun / mise                           | Runtime, package manager, tests, tools and tasks           |
+| TypeScript 7                         | Strict native compiler via `tsc --noEmit`                  |
+| Effect 4 + browser/Bun platforms     | Schemas, services, errors, concurrency, platform runtime   |
+| Effect language service / tsgo patch | Editor diagnostics and the patched native compiler         |
+| Alchemy v2                           | Effect-native Cloudflare infrastructure and local dev      |
+| Foldkit / @foldkit/ui                | Elm-style Effect UI and UI primitives                      |
+| Foldkit Vite / DevTools MCP / lint   | Build integration, state inspection, UI architecture rules |
+| Vite                                 | UI dev server and bundler, run by Alchemy                  |
+| Tailwind v4 + Vite plugin            | Token-based CSS                                            |
+| Oxfmt / Oxlint                       | Formatting and linting                                     |
+| Effect Oxlint plugin                 | Effect lint rules                                          |
+| Cloudflare types / workerd override  | Worker types and a pinned workerd                          |
+| UI assets                            | Fontsource fonts, Lucide, `cn`, `tw-animate-css`           |
 
-The original manifest used ranges or `latest` for some tools, but this reference freezes their resolved versions. Effect 4.0.0 was already installed: do not downgrade it to an RC tag because older setup guides say v4 is pre-release. `prepare: effect-tsgo patch` is inherited. The source's TypeScript 7 package exposes the native compiler as **`tsc`**, so the reference retains that actual executable instead of assuming a `tsgo` command exists. Recheck compiler binaries and patch support when upgrading.
+Effect 4 is a stable release; older guides that call it a pre-release are out of date. TypeScript 7 ships its native compiler as `tsc`, and the `prepare` script runs `effect-tsgo patch` on it. Check both when upgrading.
 
-## Config files and their contracts
+## Config files
 
-- `mise.toml`: pins Bun, enables experimental settings and pinning, adds `node_modules/.bin` to PATH, and runs `bun install` after tool installation. Package scripts are the command source of truth; mise tasks call them. Manage tool pins with `mise use bun@<version>`, not hand-written tool entries.
-- `bunfig.toml`: scopes test discovery to `./src`. The source project had no Bun config and used defaults; this small explicit setting is added for the starter.
-- `package.json`: ESM, private npm package, scripts, exact dependency pins, workerd override, and Bun patch mappings. Keep package scripts and mise tasks aligned.
-- `tsconfig.json`: strict checking, `noUncheckedIndexedAccess`, bundler resolution, preserved modules, `verbatimModuleSyntax`, and Effect language-service plugin. Browser/Worker/Bun types support this combined repo; the architectural test still prevents native globals leaking into backend domains.
-- Language-service overrides permit `effect/http` only at HTTP/UI-command/platform HTTP boundaries. `effect-oxlint` is the specifically allowed duplicate Effect consumer from lint tooling. Add narrow per-file permissions for other unstable APIs only when used; source workflow/AI-specific exceptions were removed.
-- `vite.config.ts`: `foldkit()` + Tailwind plugins, UI entry optimization, `@/` alias, Effect/Foldkit deduplication, and `.alchemy/` watch exclusion. Alchemy layers its Cloudflare integration on top for both dev and deploy. A standalone Vite build checks UI output; it does not provision infrastructure.
-- `oxlint.config.ts`: registers Effect and Foldkit plugins, enables three selected Effect error rules globally, and scopes Foldkit's architecture rules to `src/ui/**/*.ts`. It does **not** enable every Effect recommended rule globally.
-- `components.json`: foldcn registry and UI aliases for shadcn's copy-paste CLI. It points to `src/ui/styles.css`, which you implement for the new product.
-- `.mcp.json` and `.amp/settings.json`: the source's tracked, secret-free local `@foldkit/devtools-mcp` process configuration, launched with Bun. Amp's file uses `amp.mcpServers`; other compatible clients use `.mcp.json`. The tools inspect a running Foldkit app's Model, Messages, and time travel; this is not a deployed application MCP endpoint. No machine-specific settings or trust decisions are included.
-- `public/_headers`: static-asset CSP and `nosniff`. Fonts/scripts are same-origin. It does not configure API response headers.
-- `src/ui/AGENTS.md`: generalized Foldkit instructions plus the source's release-specific conventions and upgrade procedure. No source theme/layout is included.
-- `src/platform/boundary.test.ts`: the original lightweight backend dependency guard.
-- `patches/`: the two source Bun patches, unchanged so their hashes and context remain reproducible; `PATCH(automations)` comments identify provenance, not a dependency on the old app.
+- `mise.toml`: pins Bun, turns on experimental settings and pinning, adds `node_modules/.bin` to PATH, and runs `bun install` after tools install. Each package script has a matching mise task. Change tool versions with `mise use bun@<version>`.
+- `bunfig.toml`: limits test discovery to `./src`.
+- `package.json`: ESM, `private: true`, scripts, exact pins, the workerd override, and Bun patch mappings.
+- `tsconfig.json`: strict mode, `noUncheckedIndexedAccess`, bundler resolution, preserved modules, `verbatimModuleSyntax`, and the Effect language-service plugin. Browser, Worker, and Bun types are all loaded; the boundary test keeps native globals out of backend domains.
+- Language-service overrides allow the unstable `effect/http` module only in HTTP, UI command, and platform API files. `effect-oxlint` is allowed as a duplicate Effect consumer. Add narrow per-file exceptions for other unstable APIs as you use them.
+- `vite.config.ts`: the `foldkit()` and Tailwind plugins, UI entry optimization, the `@/` alias, Effect/Foldkit deduplication, and a watch exclusion for `.alchemy/`. Alchemy adds its Cloudflare integration on top for dev and deploy. `bun run build` checks the UI bundle locally.
+- `oxlint.config.ts`: loads the Effect and Foldkit plugins, turns on three Effect error rules everywhere, and applies Foldkit's architecture rules to `src/ui/**/*.ts`.
+- `components.json`: foldcn registry and UI aliases for the shadcn CLI, pointing at `src/ui/styles.css`.
+- `.mcp.json` and `.amp/settings.json`: run the `@foldkit/devtools-mcp` server with Bun. Amp reads `amp.mcpServers`; other clients read `.mcp.json`. The tools inspect a running app's Model and Messages and support time travel during local development.
+- `public/_headers`: CSP and `nosniff` for static assets. Fonts and scripts are same-origin.
+- `src/ui/AGENTS.md`: Foldkit conventions for this release and the steps to refresh them after an upgrade.
+- `src/platform/boundary.test.ts`: the backend dependency-direction check.
+- `patches/`: two Bun patches for the Foldkit DevTools relay, documented in `patches/README.md`.
 
-Use the workspace TypeScript version in your editor to activate the language-service plugin. Generic Effect Solutions guides remain useful, but their example imports and patch command may differ from the installed Effect 4/native compiler setup.
+Point your editor at the workspace TypeScript version so the language-service plugin loads. Effect Solutions guides are useful, but check their imports and patch commands against the installed Effect 4 and native compiler.
 
-## Commands from the repository root
+## Commands
+
+Run these from the repo root:
 
 ```sh
 mise trust && mise install
@@ -51,22 +53,20 @@ bun run build
 mise run dev
 ```
 
-`mise run format` intentionally rewrites files; `format:check` does not. The template includes mise tasks for all package scripts. `mise run deploy` calls `bun run deploy --stage prod` and changes shared infrastructure; run it only when explicitly authorized, after configuring the new stack/account/stage.
+`mise run format` rewrites files; `format:check` only reports. `mise run deploy` runs `bun run deploy --stage prod` and changes shared infrastructure, so only run it with approval and after setting up your own stack, account, and stage.
 
-## Known integration patches
+## Patches
 
-Under `alchemy dev`, Cloudflare's Vite upgrade listener interferes with Foldkit's relay on Vite's HTTP server. One patch moves the MCP relay onto its dedicated token-protected loopback listener; the other adds backoff after connections that immediately close. Both are required by this source setup and included with rationale in [patches/README.md](../patches/README.md).
+Under `alchemy dev`, Cloudflare's Vite upgrade listener interferes with Foldkit's DevTools relay on Vite's HTTP server. One patch moves the relay to its own token-protected loopback listener. The other adds backoff when a connection closes right after opening. See [patches/README.md](../patches/README.md).
 
-Use `bun patch <package>` and `bun patch --commit node_modules/<package>` for future edits. Document the symptom, cause, fix, and upstream removal criteria. On an upgrade, determine whether each patch is still needed and run a browser-connected DevTools session under `alchemy dev`; a successful install alone does not verify relay stability. Do not expose the relay or configure an unauthenticated fixed port casually.
+Edit patches with `bun patch <package>` and `bun patch --commit node_modules/<package>`, and document the symptom, cause, fix, and when to remove it. After an upgrade, check whether each patch is still needed and run a browser-connected DevTools session under `alchemy dev`; a clean install doesn't prove the relay is stable. Keep the relay on loopback with its token.
 
-The source's workerd override is retained as a compatibility pin, not an assertion that every new Alchemy release needs it. Re-evaluate it together with Alchemy upgrades.
+Revisit the workerd override whenever you upgrade Alchemy.
 
-## Included AI and durable workflow dependencies
+## AI and durable workflows
 
-The manifest includes `@earendil-works/pi-ai@1.0.2`, `@earendil-works/pi-durable@1.0.2`, and `agents@0.26.0` to preserve the full source technology setup. The starter does not import them or bind Workers AI/Durable Objects. Remove them deliberately if the new product does not need them; install and runtime provisioning are separate choices.
+`@earendil-works/pi-ai`, `@earendil-works/pi-durable`, and `agents` are installed and ready to use. Remove them if the product doesn't need AI or durable workflows.
 
-Define a portable AI/conversation capability in its owning domain; implement Workers AI/pi in `src/platform/cloudflare/`. Wrap Promise calls with `Effect.tryPromise`, decode model output with Schema, and keep prompting, persistence, and retry policies explicit. The source deliberately keeps pi rather than replacing it with Effect AI; that is a product integration choice, not a requirement to install two AI frameworks.
+Define the AI or conversation capability in its owning domain and implement it with Workers AI or pi in `src/platform/cloudflare/`. Wrap Promise calls in `Effect.tryPromise`, decode model output with Schema, and make prompting, persistence, and retry policies explicit.
 
-Do not import a harness that loads `cloudflare:*` at top level through Alchemy's Bun plan-time path. Local dev can still use paid remote AI. Reuse idempotency/request IDs across replay where supported, and verify real model calls separately from scripted tests.
-
-Machine-local agent skills such as Effect setup, mise setup, or Linux desktop customization are not project dependencies and are not copied. Essential project guidance is written in the repo so another machine or agent can use it without those skills.
+Never import a harness that loads `cloudflare:*` at the top level from a path Alchemy's Bun plan step reaches. Local dev can still call paid remote AI. Reuse idempotency or request IDs across replays where the API supports it, and verify real model calls separately from scripted tests.

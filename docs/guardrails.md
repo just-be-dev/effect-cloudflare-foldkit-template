@@ -1,48 +1,46 @@
-# Guardrails must have owners and executable checks
+# Guardrails
 
-These are defaults for the new application, not a claim that configuration alone enforces every policy.
+| Concern               | Rule                                                                         | How it's checked                                                        |
+| --------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Platform isolation    | Domains and HTTP don't import Cloudflare or Alchemy                          | `src/platform/boundary.test.ts`; extend it for new imports and globals  |
+| Untrusted data        | Schema-decode bodies, params, storage, remote output, config, AI answers     | Malformed-input tests                                                   |
+| Effect errors         | Typed expected failures; map errors structurally across RPC                  | `Schema.TaggedError`, failure tests, lint rules                         |
+| Request lifetime      | Identity belongs to one request; locks to the instance they protect          | Concurrency and request-isolation tests, native smoke checks            |
+| Use-case ownership    | The application operation owns authorization, writes, partial success, retry | Fail after each required write and assert what's left                   |
+| Durable behavior      | At-least-once delivery, deterministic replay, idempotent side effects        | Crash, retry, and replay tests on the real host                         |
+| Storage compatibility | Append migrations; keep stored contracts or migrate them explicitly          | Upgrade and old-data tests                                              |
+| UI architecture       | Schema Model, fact-like Messages, pure update/view, effects in Commands      | Foldkit lint rules in `src/ui/`, Story and Scene tests                  |
+| Dependencies          | Exact pins, reviewed patches and lockfile                                    | Frozen install, typecheck, lint, tests, build, documented patch removal |
+| Operations            | No deploys, production writes, or publishing without approval                | Agent instructions and human sign-off                                   |
 
-| Concern               | Rule                                                                            | Enforcement / evidence                                                           |
-| --------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Platform isolation    | Domains and HTTP do not import Cloudflare or Alchemy                            | `src/platform/boundary.test.ts`; extend for new import paths/globals             |
-| Untrusted data        | Schema-decode bodies, params, storage, remote output, configuration, AI answers | Boundary and malformed-input tests                                               |
-| Effect errors         | Typed expected failures; structural mapping across RPC                          | `Schema.TaggedError`, failure tests, lint rules                                  |
-| Request lifetime      | Identity belongs to one request; locks to the shared instance they protect      | Concurrent/request-isolation tests and native smoke checks                       |
-| Use-case ownership    | Application owns authorization, all writes, partial success, retry              | Failure after each required write; assertions about what remains                 |
-| Durable behavior      | At-least-once delivery; deterministic replay; idempotent side effects           | Crash/retry/replay tests against the actual host                                 |
-| Storage compatibility | Append migrations; preserve persisted contracts or migrate explicitly           | Upgrade and old-data tests                                                       |
-| UI architecture       | Schema Model, fact-like Messages, pure Update/View, effects in Commands         | UI-scoped Foldkit lint, Story and Scene tests                                    |
-| Dependencies          | Compatible exact pins; reviewed patches and lockfile                            | Frozen install, typecheck, lint, tests, build, documented patch removal criteria |
-| Operations            | No unauthorized deployment, production write, or publication                    | Agent instructions and explicit human authorization; not an automated guarantee  |
+## Security
 
-## Security defaults to retain
+- The API is public on its workers.dev URL and through the Website. Add verified identity and authorization that covers both before exposing protected data.
+- Keep the persisted Worker logs and traces and the API's `Cloudflare.Telemetry` layer. Tune sampling and retention for your traffic. Never put secrets, auth headers, payloads, or personal data in logs or spans.
+- Cap API request bodies (32 KB is a sensible default) and return errors as `{ "error": string }`. Test both sides of the limit.
+- If the app accepts outbound URLs, guard against SSRF both when validating and right before sending: HTTPS only, no embedded credentials, no private or loopback destinations, and a clear policy for redirects and DNS.
+- Don't forward credentials or tracing headers to external hosts. Keep secrets out of business models, prompts, and workflow definitions.
+- Serve fonts and scripts from your own origin. Start from the CSP in `public/_headers` and loosen it only for resources you actually load. `style-src 'unsafe-inline'` is a candidate for tightening.
+- Keep secrets in runtime bindings or configuration. `.gitignore` covers `.env`, `.dev.vars`, local Alchemy and Wrangler state, dependencies, and build output.
+- If an integration is simulated, label the results as simulated.
 
-- The API Worker is public directly and through the Website's service binding. Add verified identity and application authorization before exposing protected data or operations, covering both entry points. Cloudflare Access is not configured by default.
-- Preserve persisted native Worker logs/traces and the API's `Cloudflare.Telemetry` layer. Tune sampling and retention for the new product; never attach secrets, authentication headers, payloads, or personal data to logs/spans.
-- Keep a bounded API request body (32 KB was the source default) and consistent `{ "error": string }` failures. Add your own boundary-limit tests; this template does not ship those handlers.
-- If accepting outbound URLs, protect against SSRF when validating **and** before sending: HTTPS, no credentials, no private/loopback destination, with an explicit redirect/DNS policy. The source's literal URL restriction is workflow-specific, not a generic requirement for every app.
-- Do not forward credentials or tracing headers to arbitrary external destinations. Persist no secrets in business models, prompts, or workflow definitions.
-- Serve fonts/scripts locally. Start from `public/_headers` CSP and adjust only for actual resource requirements. `style-src 'unsafe-inline'` is inherited, not a hardening target already achieved.
-- Keep secrets in authorized runtime bindings/configuration. Ignore `.env`, `.dev.vars`, local Cloudflare/Alchemy state, dependencies, and builds. Publish only reviewed files from the new repository, never the source checkout/history.
-- If an integration is simulated, label results as simulated rather than implying an external action happened.
-
-## Verification after implementing an app
+## Verification
 
 ```sh
 bun run typecheck && bun run lint && bun run test && bun run format:check
-bun run build  # UI/bundling changes; no infrastructure writes
+bun run build  # for UI or bundling changes; touches no infrastructure
 ```
 
-Use `bun:test` adjacent to domain/application code and memory implementations with scripted external services. Test properties that a plausible wrong implementation violates: limits on both sides, asymmetric values, interrupted writes, duplicate delivery, stale replies, and overlapping reports. Derive expected results independently.
+Put `bun:test` files next to the code they cover and use memory implementations with scripted external services. Pick test inputs that a plausible wrong implementation would fail: both sides of a limit, asymmetric values, interrupted writes, duplicate delivery, stale replies, overlapping reports. Work out expected results independently of the code.
 
-Foldkit Story tests drive Messages through Update; Scene tests drive the view through accessible locators. Add page-local tests for page-owned behavior and root tests for routing/parent-child communication. Scene is not a substitute for visually inspecting the running browser's CSS and affected states. Render and inspect before finishing appearance changes.
+Foldkit Story tests send Messages through update. Scene tests drive the view through accessible locators. Put page-owned behavior in page-level tests and routing or parent-child communication in root tests. For visual changes, also open the app in a browser and look at the affected states.
 
-Native integration checks run under `mise run dev` against the printed Website URL. Start with GET endpoints and assert status **and decoded body**, not just “HTTP succeeded.” Mutating calls can change data, schedule jobs, invoke paid AI, or contact other systems: use disposable local data and approved destinations. Memory tests cannot verify native transactions, callback delivery, real AI, or telemetry ingestion. Confirm logs/traces in Cloudflare's dashboard after an authorized deployment.
+Run native checks under `mise run dev` against the Website URL it prints. Start with GET endpoints and assert on both the status and the decoded body. Mutating calls can change data, schedule jobs, call paid AI, or reach other systems, so use throwaway local data and approved destinations. Native transactions, callback delivery, real AI calls, and telemetry ingestion all need checks beyond memory tests; confirm logs and traces in the Cloudflare dashboard after an approved deploy.
 
-Record limitations explicitly, including expired credentials, untested model calls, and absent production JWT/authorization coverage. Separate local edits, committed changes, pushed changes, and deployment status.
+When reporting, list what you couldn't verify (expired credentials, untested model calls, missing auth coverage) and say whether changes are local, committed, pushed, or deployed.
 
-## Maintenance and approval boundaries
+## Approvals
 
-Refactor without behavior changes first, verify, then change behavior in a separate reviewable step. Preserve user work and leave unrelated fixes out.
+Refactor without changing behavior first, verify, then change behavior in a separate step. Leave the user's work and unrelated fixes alone.
 
-Require explicit authorization before deploy/destroy, using dev against deployed stages, shared database writes/migrations, production restarts, access-control changes, pushes/PRs, or package/release publication. Do not add automatic deployment or shared-state migration to an install hook or CI check. This template intentionally includes no CI/deployment workflow because the source does not supply one to inherit.
+Get explicit approval before deploying or destroying, running dev against a deployed stage, writing to or migrating a shared database, restarting production, changing access controls, pushing, opening PRs, or publishing. Keep deploys and shared-state migrations out of install hooks and CI checks.

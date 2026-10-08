@@ -2,7 +2,7 @@
 
 Bun applies these patches on install through `patchedDependencies` in `package.json`. Each patch is tied to an exact version. When you upgrade a patched package, check whether upstream fixed the problem. Then either drop the patch or recreate it with `bun patch <pkg>` and `bun patch --commit node_modules/<pkg>`, and update this file.
 
-Every patch needs an entry here. Inside the patched code, mark the change with a `PATCH(automations)` comment.
+Every patch needs an entry here. Inside the patched code, mark the change with a `PATCH:` comment.
 
 ## Foldkit DevTools MCP reconnect loop under `alchemy dev`
 

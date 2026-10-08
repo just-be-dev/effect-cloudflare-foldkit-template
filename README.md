@@ -1,8 +1,8 @@
-# Effect · Cloudflare · Foldkit project template
+# Effect · Cloudflare · Foldkit template
 
-A runnable starter for a new application using TypeScript, Effect 4, Foldkit, Bun, mise, and Alchemy 2 on Cloudflare. It captures the organization, tooling, and engineering guardrails of a working project without carrying over its product.
+A starter for TypeScript apps on Cloudflare, built with Effect 4, Foldkit, Bun, mise, and Alchemy v2.
 
-Configuration and code live at the repository root, ready to install, test, build, and run locally. The starter has a neutral Foldkit counter page, a portable Effect service, `GET /api/health`, and an Alchemy stack with a public Website and public API Worker. Cloudflare Access is not configured. Native Worker logs and traces are enabled, including Effect spans in the API. It includes the source's full dependency set, but does not provision D1, Durable Objects, or AI until the new product needs them.
+It comes with a Foldkit counter page, a small Effect service, a `GET /api/health` route, and an Alchemy stack with two Workers: a Website that serves the UI and an API. Both Workers send logs and traces to Workers Observability, and the API's Effect spans show up in Cloudflare's trace view.
 
 ```sh
 mise trust && mise install
@@ -12,71 +12,63 @@ bun run build
 mise run dev
 ```
 
-Open the Website URL printed by `mise run dev` for the UI. The API is reachable both directly at its Worker URL and through the Website's `/api/*` forwarding. `GET /api/health` returns `{ "name": "Project starter", "status": "ok" }`; unknown API routes return a JSON 404. There are no mutating API routes or request bodies yet. Native development is local; adding Workers AI later can make real remote calls.
+`mise run dev` prints a Website URL. The UI is served there, and `/api/*` is forwarded to the API Worker, which also has its own workers.dev URL. `GET /api/health` returns `{ "name": "Project starter", "status": "ok" }`. Unknown API routes return a JSON 404.
 
-## Included code structure
+## Layout
 
 ```text
 alchemy.run.ts                   re-exports the platform stack
 src/
-  model.ts / service.ts          portable Schema and Effect capability
+  model.ts / service.ts          portable Schema and Effect service
   api.ts / api.test.ts           routes and HTTP contract tests
   platform/
-    boundary.test.ts             guards backend dependency direction
-    cloudflare/{stack,api,edge}.ts  resources, public API Worker, forwarding edge
+    boundary.test.ts             keeps platform imports out of domain code
+    cloudflare/{stack,api,edge}.ts  resources, API Worker, forwarding edge
   ui/
     entry.ts                     runtime boot
-    main.ts                      pure Model, Messages, init, update, view
-    styles.css                   neutral light/dark Tailwind theme
+    main.ts                      Model, Messages, init, update, view
+    styles.css                   light/dark Tailwind theme
     components/ui/               foldcn badge, bubble, button, empty,
                                  input, message, and textarea
-    lib/utils.ts                 foldcn class helper
-    story.test.ts / scene.test.ts  update and accessible-view tests
-    AGENTS.md                    release-specific Foldkit conventions
+    lib/utils.ts                 `cn` class helper
+    story.test.ts / scene.test.ts  update and view tests
+    AGENTS.md                    Foldkit conventions
 ```
 
-The remaining root files configure Bun, mise, TypeScript/Effect, Vite, lint/format, foldcn, DevTools MCP, and dependency patches. `bunfig.toml` scopes tests to `src/`; the original project relied on Bun defaults and had no separate Bun config.
+Root files configure Bun, mise, TypeScript, Vite, Oxlint/Oxfmt, foldcn, the Foldkit DevTools MCP server, and dependency patches.
 
-## Start a different project
+## Starting a new project
 
-1. Use GitHub's **Use this template → Create a new repository**. This template is public; choose the new project's visibility explicitly.
-2. Describe the new product and its first use case. Choose domain names, data ownership, identity/authorization requirements, and whether you need D1, Durable Objects, or AI. The original project's single-tenant prototype is not a requirement.
-3. Rename `package.json` from `new-project`, the `project-starter` stack in `src/platform/cloudflare/stack.ts`, the health service's app name in `src/platform/cloudflare/api.ts`, and the page title/content in `src/ui/`. Resource names are persisted contracts after deployment, so choose them before the first deploy.
-4. Run `mise trust && mise install`, then `bun install --frozen-lockfile`. Commit the resulting project configuration and retain `bun.lock`. Check the [tooling guide](docs/tooling.md) before upgrading the snapshot.
-5. Replace the sample domain and counter with the new product's first vertical slice. Preserve platform isolation and runtime boot separation. Add persistence/AI resources and other folders only when they own real behavior.
-6. Add the new product's invariants to `AGENTS.md`, replace this README with project setup/API documentation, and run the [verification checks](docs/guardrails.md). Deployment requires a separately configured Cloudflare profile and explicit authorization.
+1. Click **Use this template → Create a new repository** and pick the new repository's visibility.
+2. Decide on the product's domain names, who owns which data, how users authenticate, and whether you need D1, Durable Objects, or AI.
+3. Rename things: `name` in `package.json`, the `project-starter` stack in `src/platform/cloudflare/stack.ts`, the app name in `src/platform/cloudflare/api.ts`, and the page title and content in `index.html` and `src/ui/`. Resource names stick once deployed, so settle them before the first deploy.
+4. Run `mise trust && mise install`, then `bun install --frozen-lockfile`. Commit `bun.lock`. Read the [tooling guide](docs/tooling.md) before upgrading dependencies.
+5. Replace the sample service and counter with your first real feature. Keep Cloudflare code in `src/platform/cloudflare/` and runtime boot in `src/ui/entry.ts`.
+6. Add your product's invariants to `AGENTS.md`, rewrite this README, and run the [checks](docs/guardrails.md).
 
-An agent can start with: “Read AGENTS.md and docs/ in this repository. Adapt this starter for an application that does [product description]. Keep the stack and boundaries; do not invent an automation designer or workflow engine. Implement one useful vertical slice and verify it locally. Do not deploy.”
+A prompt for an agent: "Read AGENTS.md and docs/. Adapt this starter for an application that does [product description]. Keep the stack and boundaries. Build one useful vertical slice and verify it locally. Do not deploy."
 
-## Deployment requires a new project's choices
+## Deploying
 
-Configure an authorized Cloudflare profile (`bun alchemy profile edit --add Cloudflare` or `ALCHEMY_PROFILE`). Both Workers are public: no Cloudflare Access policy or test service token is created. The API uses Alchemy's default `workersDev: true`, making its stable workers.dev URL and version preview URLs available as well as the Website's service binding. Add the new product's authentication and authorization before exposing protected data or operations, covering both entry points. Credentials and local state are not included.
+Set up a Cloudflare profile with `bun alchemy profile edit --add Cloudflare`, or point `ALCHEMY_PROFILE` at an existing one. `mise run deploy` deploys the `prod` stage. The first deploy may offer to create Cloudflare-hosted Alchemy state.
 
-`mise run deploy` targets `prod` and changes shared infrastructure; run it only with explicit authorization. The first deploy may offer to bootstrap Cloudflare-hosted Alchemy state. No automatic deploy workflow is included.
+Both Workers are public. The API answers on its workers.dev URL and through the Website's service binding, so any authentication you add has to cover both.
 
-## Telemetry is ready for Cloudflare Workers Observability
+## Telemetry
 
-Both Workers explicitly enable persisted invocation logs and native traces with a sampling rate of `1` (100%). The API also provides `Cloudflare.Telemetry({ headSamplingRate: 1, persist: true })`, which exports its `Api.request` span and future `Effect.withSpan` / named `Effect.fn` spans into Cloudflare's native trace waterfall. No collector URL, telemetry secret, or extra package is needed.
+Both Workers persist invocation logs and traces with a sampling rate of `1`, so every request is recorded. The API also provides `Cloudflare.Telemetry({ headSamplingRate: 1, persist: true })`, which exports the `Api.request` span and any `Effect.withSpan` or `Effect.fn` spans to Cloudflare.
 
-After an authorized deploy, send a request to `/api/health` and inspect **Workers & Pages → App / Api → Observability** for logs and traces. Local smoke checks verify runtime wiring, not dashboard ingestion. Static assets that do not invoke a Worker produce no handler telemetry; this is operational telemetry, not browser analytics. Lower sampling in the Worker declarations and the API Telemetry layer if production volume warrants it. See the [Cloudflare guide](docs/cloudflare.md) for limitations and privacy guidance.
+After a deploy, request `/api/health` and open **Workers & Pages → App / Api → Observability**. Lower the sampling rates in `stack.ts` and `api.ts` once traffic grows. The [Cloudflare guide](docs/cloudflare.md) has the details.
 
-## What to read
+## Docs
 
-| Guide                                       | What it captures                                                             |
-| ------------------------------------------- | ---------------------------------------------------------------------------- |
-| [Organization](docs/organization.md)        | Suggested repository shape and dependency direction                          |
-| [Effect architecture](docs/architecture.md) | Domain ownership, services/layers, lifetimes, transactions, compatibility    |
-| [Tooling](docs/tooling.md)                  | Version snapshot, config choices, commands, MCP, patches, optional AI        |
-| [Cloudflare](docs/cloudflare.md)            | Alchemy 2 phases, public Worker topology, local state, D1, durable callbacks |
-| [Guardrails](docs/guardrails.md)            | Boundaries, security, verification, operational approval rules               |
-| [Root agent instructions](AGENTS.md)        | Reusable instructions for implementing the new application                   |
-| [UI agent instructions](src/ui/AGENTS.md)   | Foldkit architecture, testing, components, upgrade procedure                 |
-| [Dependency patches](patches/README.md)     | Known Alchemy/Foldkit DevTools integration fixes                             |
-
-## Provenance and limits
-
-Extracted on 2026-10-08 from the private [automations project](https://github.com/just-be-dev/automations/tree/b7024a19094ee6af342899a3e04520aa9cfe9626). That repository is a reference, not a runtime dependency. All necessary guidance is included here.
-
-All source direct dependencies are included and pinned to the versions resolved in its lockfile, not to today's `latest` tags. AI packages are installed but unused by the starter. Source transitive resolutions are retained. The seven foldcn components are copied from the source's `src/ui/components/ui/`; their required theme tokens use the starter's neutral palette, and the counter uses the copied button. Working starter code is not a claim that a new product is production-ready: authentication, authorization, persistence/recovery, and real integrations need their own verification.
-
-Not copied: automation/workflow/entity business code, stored data, migrations, API-specific schemas, product branding, credentials, `.alchemy/`, `.wrangler/`, build output, source Git history, or machine-specific agent skills.
+| Guide                                     | Covers                                                  |
+| ----------------------------------------- | ------------------------------------------------------- |
+| [Organization](docs/organization.md)      | Where code goes as the project grows                    |
+| [Architecture](docs/architecture.md)      | Domains, services and layers, lifetimes, transactions   |
+| [Tooling](docs/tooling.md)                | Pinned versions, config files, commands, patches, AI    |
+| [Cloudflare](docs/cloudflare.md)          | Alchemy phases, Worker topology, telemetry, state, D1   |
+| [Guardrails](docs/guardrails.md)          | Boundaries, security, verification, what needs approval |
+| [Agent instructions](AGENTS.md)           | Rules for agents working in this repo                   |
+| [UI agent instructions](src/ui/AGENTS.md) | Foldkit architecture, testing, components, upgrades     |
+| [Dependency patches](patches/README.md)   | Alchemy and Foldkit DevTools fixes                      |
