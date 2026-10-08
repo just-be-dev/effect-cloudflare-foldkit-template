@@ -2,12 +2,12 @@
 
 This is a runnable starter. Read `README.md` and `docs/`, replace the sample domain/UI, and add the new product's layout, API, and invariants. Do not recreate the source project's automation application.
 
-`src/app-info/` owns the sample Schema/service. `src/http/api.ts` composes its health route. `src/platform/cloudflare/{stack,api,edge}.ts` declares resources, hosts the private API, and forwards requests. `src/ui/entry.ts` boots the counter definitions in `main.ts`. D1, Durable Objects, and AI are available dependencies but are not provisioned by default.
+`src/model.ts` and `src/service.ts` own the sample Schema/service. `src/api.ts` composes its health route. `src/platform/cloudflare/{stack,api,edge}.ts` declares resources, hosts the private API, and forwards requests. `src/ui/entry.ts` boots the counter definitions in `main.ts`. D1, Durable Objects, and AI are available dependencies but are not provisioned by default.
 
 ## Ownership and scope
 
-- Group business code by domain under `src/<domain>/`. Keep models, validation, operations, and capability contracts together.
-- Platform-independent HTTP belongs in `src/http/`. Handlers decode inputs, invoke complete application operations, and encode responses.
+- Keep small applications flat under `src/`; group business code by domain under `src/<domain>/` as responsibilities emerge. Keep models, validation, operations, and capability contracts together.
+- Platform-independent HTTP starts in `src/api.ts`. Handlers decode inputs, invoke complete application operations, and encode responses; split routes into `src/http/` only when they need their own modules.
 - Cloudflare SDKs, native globals, storage adapters, entry points, identity extraction, bindings, and deployment configuration belong in `src/platform/cloudflare/`. Domain code must not import them.
 - Platform imports domain, never the reverse. Preserve `src/platform/boundary.test.ts`; update it when adding other platform SDKs or aliases.
 - UI lives in `src/ui/`; follow its `AGENTS.md`. Its alias `@/` maps to `src/ui/`, not all of `src/`.

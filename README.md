@@ -19,8 +19,8 @@ Open the Website URL printed by `mise run dev` (not the private API Worker's URL
 ```text
 alchemy.run.ts                   re-exports the platform stack
 src/
-  app-info/{model,service}.ts     portable Schema and Effect capability
-  http/{api,api.test}.ts          routes and HTTP contract tests
+  model.ts / service.ts          portable Schema and Effect capability
+  api.ts / api.test.ts           routes and HTTP contract tests
   platform/
     boundary.test.ts             guards backend dependency direction
     cloudflare/{stack,api,edge}.ts  resources, private Worker, forwarding edge
@@ -28,6 +28,8 @@ src/
     entry.ts                     runtime boot
     main.ts                      pure Model, Messages, init, update, view
     styles.css                   neutral light/dark Tailwind theme
+    components/ui/               foldcn badge, bubble, button, empty,
+                                 input, message, and textarea
     lib/utils.ts                 foldcn class helper
     story.test.ts / scene.test.ts  update and accessible-view tests
     AGENTS.md                    release-specific Foldkit conventions
@@ -69,6 +71,6 @@ Configure an authorized Cloudflare profile (`bun alchemy profile edit --add Clou
 
 Extracted on 2026-10-08 from the private [automations project](https://github.com/just-be-dev/automations/tree/b7024a19094ee6af342899a3e04520aa9cfe9626). That repository is a reference, not a runtime dependency. All necessary guidance is included here.
 
-All source direct dependencies are included and pinned to the versions resolved in its lockfile, not to today's `latest` tags. AI packages are installed but unused by the starter. Source transitive resolutions are retained. Working starter code is not a claim that a new product is production-ready: authentication, authorization, persistence/recovery, and real integrations need their own verification.
+All source direct dependencies are included and pinned to the versions resolved in its lockfile, not to today's `latest` tags. AI packages are installed but unused by the starter. Source transitive resolutions are retained. The seven foldcn components are copied from the source's `src/ui/components/ui/`; their required theme tokens use the starter's neutral palette, and the counter uses the copied button. Working starter code is not a claim that a new product is production-ready: authentication, authorization, persistence/recovery, and real integrations need their own verification.
 
 Not copied: automation/workflow/entity business code, stored data, migrations, API-specific schemas, product branding, credentials, `.alchemy/`, `.wrangler/`, build output, source Git history, or machine-specific agent skills.

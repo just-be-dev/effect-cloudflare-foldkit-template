@@ -8,22 +8,34 @@
   --color-card-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
   --color-border: var(--border);
+  --color-input: var(--border);
   --color-ring: var(--primary);
+  --color-sidebar: var(--background);
+  --color-hover: var(--muted);
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --radius-md: calc(var(--radius) * 0.8);
+  --shadow-card: 0 0 0 1px var(--border);
 }
 
 :root {
+  --radius: 0.625rem;
   --background: #f8fafc;
   --foreground: #0f172a;
   --card: #fff;
   --primary: #1d4ed8;
   --primary-foreground: #fff;
+  --secondary: var(--muted);
   --muted: #e2e8f0;
   --muted-foreground: #475569;
+  --destructive: #dc2626;
   --border: #cbd5e1;
 }
 
@@ -36,6 +48,7 @@
     --primary-foreground: #0f172a;
     --muted: #334155;
     --muted-foreground: #cbd5e1;
+    --destructive: #f87171;
     --border: #475569;
   }
 }

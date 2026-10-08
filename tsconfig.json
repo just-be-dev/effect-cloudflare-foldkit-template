@@ -22,7 +22,8 @@
             "include": [
               "src/ui/api.ts",
               "src/ui/**/command.ts",
-              "src/http/**/*.ts",
+              "src/api.ts",
+              "src/api.test.ts",
               "src/platform/cloudflare/api.ts",
               "src/platform/cloudflare/access.ts",
               "src/platform/cloudflare/access.test.ts"

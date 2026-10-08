@@ -24,9 +24,9 @@ The app follows [Foldkit's project organization](https://foldkit.dev/patterns/pr
 
 The UI is styled with Tailwind CSS v4 and [foldcn](https://foldcn.elianiva.com), a shadcn-style registry of copy-paste Foldkit components. Agent docs live at https://foldcn.elianiva.com/llms.txt, and every page has a Markdown twin at `/docs/<name>.md`.
 
-- Vendored components live in `src/ui/components/ui/`, and `cn` and `icon` live in `src/ui/lib/`. Import them through the `@/` alias, which maps to `src/ui/` in `tsconfig.json` and `vite.config.ts`. This project owns the copies, so edit them as needed.
+- Vendored components live in `src/ui/components/ui/`: badge, bubble, button, empty, input, message, and textarea. `cn` lives in `src/ui/lib/utils.ts`; add other shared helpers there only as needed. Import components through the `@/` alias, which maps to `src/ui/` in `tsconfig.json` and `vite.config.ts`. This project owns the copies, so edit them as needed.
 - Add a component with `bunx shadcn@latest add @foldcn/<name>`. `components.json` already registers the namespace. Review the diff afterwards, because the CLI may also edit `src/ui/styles.css` or `package.json`.
-- Never install the `@foldcn/foldcn` base item blindly. Its dependency pins can conflict with the exact versions here. Implement the required theme mapping and helpers yourself against the installed versions; this template does not include the source application's stylesheet.
+- Never install the `@foldcn/foldcn` base item. Its dependency pins can conflict with the exact versions here. The included components' theme mapping is already in `src/ui/styles.css`, using the starter's neutral palette rather than the source application's stylesheet.
 - Theme tokens belong in `src/ui/styles.css`; use semantic tokens such as `bg-card` and `text-muted-foreground` rather than raw colors. Choose the new product's visual language instead of inheriting the source branding. If adding a saved theme, make system preference and an explicit `data-theme` choice agree across Tailwind's dark variant, boot Flags, the persistence Command, and a same-origin pre-paint script.
 - Fonts are self-hosted through Fontsource and imported in `entry.ts`. Inter and IBM Plex Mono are included as optional defaults. The CSP in `public/_headers` allows only `font-src 'self'`, so don't load fonts or stylesheets from a CDN.
 

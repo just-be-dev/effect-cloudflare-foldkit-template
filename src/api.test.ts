@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import * as HttpRouter from "effect/http/HttpRouter";
 import * as Layer from "effect/Layer";
-import { AppInfo } from "../app-info/service.ts";
+import { AppInfo } from "./service.ts";
 import { apiRoutes } from "./api.ts";
 
 test("health reads the supplied capability and unknown routes return JSON errors", async () => {

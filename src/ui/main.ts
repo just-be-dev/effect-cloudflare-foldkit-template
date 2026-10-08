@@ -3,6 +3,7 @@ import type { Document, HtmlBuilder } from "foldkit/html";
 import { defineMessageUnion } from "foldkit/message";
 import { modifyFields } from "foldkit/struct";
 import type * as Update from "foldkit/update";
+import { button } from "@/components/ui/button";
 
 // MODEL
 
@@ -68,25 +69,11 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => ({
           h.div(
             [h.Class("flex gap-3")],
             [
-              h.button(
-                [
-                  h.Type("button"),
-                  h.Class(
-                    "rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring",
-                  ),
-                  h.OnClick(Message.ClickedIncrement()),
-                ],
-                ["Increment"],
-              ),
-              h.button(
-                [
-                  h.Type("button"),
-                  h.Class(
-                    "rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring",
-                  ),
-                  h.OnClick(Message.ClickedReset()),
-                ],
-                ["Reset"],
+              button({ onClick: Message.ClickedIncrement(), type: "button" }, "Increment", h),
+              button(
+                { onClick: Message.ClickedReset(), type: "button", variant: "outline" },
+                "Reset",
+                h,
               ),
             ],
           ),

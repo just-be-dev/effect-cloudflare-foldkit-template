@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect";
 import * as HttpRouter from "effect/http/HttpRouter";
 import * as HttpServerResponse from "effect/http/HttpServerResponse";
 import * as Layer from "effect/Layer";
-import { AppInfo } from "../app-info/service.ts";
+import { AppInfo } from "./service.ts";
 
 const json = (body: unknown, status = 200) =>
   HttpServerResponse.jsonUnsafe(body, {
