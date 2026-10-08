@@ -2,7 +2,7 @@
 
 A runnable starter for a new application using TypeScript, Effect 4, Foldkit, Bun, mise, and Alchemy 2 on Cloudflare. It captures the organization, tooling, and engineering guardrails of a working project without carrying over its product.
 
-Configuration and code live at the repository root, ready to install, test, build, and run locally. The starter has a neutral Foldkit counter page, a portable Effect service, `GET /api/health`, and an Alchemy stack with an Access-protected Website and private API Worker. It includes the source's full dependency set, but does not provision D1, Durable Objects, or AI until the new product needs them.
+Configuration and code live at the repository root, ready to install, test, build, and run locally. The starter has a neutral Foldkit counter page, a portable Effect service, `GET /api/health`, and an Alchemy stack with a public Website and private API Worker. Cloudflare Access is not configured. Native Worker logs and traces are enabled, including Effect spans in the API. It includes the source's full dependency set, but does not provision D1, Durable Objects, or AI until the new product needs them.
 
 ```sh
 mise trust && mise install
@@ -12,7 +12,7 @@ bun run build
 mise run dev
 ```
 
-Open the Website URL printed by `mise run dev` (not the private API Worker's URL). Access is skipped locally. `GET /api/health` returns `{ "name": "Project starter", "status": "ok" }`; unknown API routes return a JSON 404. There are no mutating API routes or request bodies yet. Native development is local; adding Workers AI later can make real remote calls.
+Open the Website URL printed by `mise run dev` (not the private API Worker's URL). The Website and its `/api/*` routes are public in both local and deployed stages. `GET /api/health` returns `{ "name": "Project starter", "status": "ok" }`; unknown API routes return a JSON 404. There are no mutating API routes or request bodies yet. Native development is local; adding Workers AI later can make real remote calls.
 
 ## Included code structure
 
@@ -39,7 +39,7 @@ The remaining root files configure Bun, mise, TypeScript/Effect, Vite, lint/form
 
 ## Start a different project
 
-1. Use GitHub's **Use this template → Create a new repository**. Choose private visibility explicitly; do not assume it is inherited.
+1. Use GitHub's **Use this template → Create a new repository**. This template is public; choose the new project's visibility explicitly.
 2. Describe the new product and its first use case. Choose domain names, data ownership, identity/authorization requirements, and whether you need D1, Durable Objects, or AI. The original project's single-tenant prototype is not a requirement.
 3. Rename `package.json` from `new-project`, the `project-starter` stack in `src/platform/cloudflare/stack.ts`, the health service's app name in `src/platform/cloudflare/api.ts`, and the page title/content in `src/ui/`. Resource names are persisted contracts after deployment, so choose them before the first deploy.
 4. Run `mise trust && mise install`, then `bun install --frozen-lockfile`. Commit the resulting project configuration and retain `bun.lock`. Check the [tooling guide](docs/tooling.md) before upgrading the snapshot.
@@ -50,9 +50,15 @@ An agent can start with: “Read AGENTS.md and docs/ in this repository. Adapt t
 
 ## Deployment requires a new project's choices
 
-Configure an authorized Cloudflare profile (`bun alchemy profile edit --add Cloudflare` or `ALCHEMY_PROFILE`). Review the Access audience in `stack.ts`: the inherited default admits Cloudflare account members and creates a 30-day machine-test service token. Credentials and local state are not included. The API remains private (`workersDev: false`) behind a service binding. Add JWT validation and application authorization before exposing user-specific or mutating operations.
+Configure an authorized Cloudflare profile (`bun alchemy profile edit --add Cloudflare` or `ALCHEMY_PROFILE`). The Website is public: no Cloudflare Access policy or test service token is created. The API Worker has no direct public URL (`workersDev: false`), but its routes are publicly callable through the Website's service binding. Add the new product's authentication and authorization before exposing protected data or operations. Credentials and local state are not included.
 
 `mise run deploy` targets `prod` and changes shared infrastructure; run it only with explicit authorization. The first deploy may offer to bootstrap Cloudflare-hosted Alchemy state. No automatic deploy workflow is included.
+
+## Telemetry is ready for Cloudflare Workers Observability
+
+Both Workers explicitly enable persisted invocation logs and native traces with a sampling rate of `1` (100%). The API also provides `Cloudflare.Telemetry({ headSamplingRate: 1, persist: true })`, which exports its `Api.request` span and future `Effect.withSpan` / named `Effect.fn` spans into Cloudflare's native trace waterfall. No collector URL, telemetry secret, or extra package is needed.
+
+After an authorized deploy, send a request to `/api/health` and inspect **Workers & Pages → App / Api → Observability** for logs and traces. Local smoke checks verify runtime wiring, not dashboard ingestion. Static assets that do not invoke a Worker produce no handler telemetry; this is operational telemetry, not browser analytics. Lower sampling in the Worker declarations and the API Telemetry layer if production volume warrants it. See the [Cloudflare guide](docs/cloudflare.md) for limitations and privacy guidance.
 
 ## What to read
 

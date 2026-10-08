@@ -17,7 +17,8 @@ These are defaults for the new application, not a claim that configuration alone
 
 ## Security defaults to retain
 
-- Keep the API reachable only through the Access-protected Website's service binding. Validate JWT identity and enforce authorization in application operations. A private endpoint is not a substitute for authorization.
+- Keep the API Worker directly reachable only through the public Website's service binding. Its forwarded HTTP routes are public; add verified identity and application authorization before exposing protected data or operations. Cloudflare Access is not configured by default.
+- Preserve persisted native Worker logs/traces and the API's `Cloudflare.Telemetry` layer. Tune sampling and retention for the new product; never attach secrets, authentication headers, payloads, or personal data to logs/spans.
 - Keep a bounded API request body (32 KB was the source default) and consistent `{ "error": string }` failures. Add your own boundary-limit tests; this template does not ship those handlers.
 - If accepting outbound URLs, protect against SSRF when validating **and** before sending: HTTPS, no credentials, no private/loopback destination, with an explicit redirect/DNS policy. The source's literal URL restriction is workflow-specific, not a generic requirement for every app.
 - Do not forward credentials or tracing headers to arbitrary external destinations. Persist no secrets in business models, prompts, or workflow definitions.
@@ -36,7 +37,7 @@ Use `bun:test` adjacent to domain/application code and memory implementations wi
 
 Foldkit Story tests drive Messages through Update; Scene tests drive the view through accessible locators. Add page-local tests for page-owned behavior and root tests for routing/parent-child communication. Scene is not a substitute for visually inspecting the running browser's CSS and affected states. Render and inspect before finishing appearance changes.
 
-Native integration checks run under `mise run dev` against the printed Website URL. Start with GET endpoints and assert status **and decoded body**, not just “HTTP succeeded.” Mutating calls can change data, schedule jobs, invoke paid AI, or contact other systems: use disposable local data and approved destinations. Memory tests cannot verify native transactions, Access, callback delivery, or real AI.
+Native integration checks run under `mise run dev` against the printed Website URL. Start with GET endpoints and assert status **and decoded body**, not just “HTTP succeeded.” Mutating calls can change data, schedule jobs, invoke paid AI, or contact other systems: use disposable local data and approved destinations. Memory tests cannot verify native transactions, callback delivery, real AI, or telemetry ingestion. Confirm logs/traces in Cloudflare's dashboard after an authorized deployment.
 
 Record limitations explicitly, including expired credentials, untested model calls, and absent production JWT/authorization coverage. Separate local edits, committed changes, pushed changes, and deployment status.
 

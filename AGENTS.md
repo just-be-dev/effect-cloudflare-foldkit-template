@@ -31,8 +31,9 @@ This is a runnable starter. Read `README.md` and `docs/`, replace the sample dom
 - Use Alchemy 2's Effect API, not v1 Promise-based examples. Installed `node_modules/alchemy/src` is the final reference; documentation starts at https://alchemy.run/llms.txt.
 - The outer Worker/DO Effect runs at plan time and cold start: declare/acquire bindings there. Storage, raw bindings, callbacks, and identity are usable only in the returned instance/request runtime.
 - Never load `cloudflare:*` at module top level through a plan-time import path.
-- Keep the public Website edge forwarding-only. The API Worker remains private (`workersDev: false`, no public routes), reached over a service binding from the Access-protected Website.
-- Development skips Access; deployment does not. Treat authentication and role authorization as explicit requirements, not as something a header alone proves.
+- Keep the public Website edge forwarding-only. The API Worker remains private (`workersDev: false`, no public routes), reached over a service binding from the public Website. Its HTTP routes are public through that Website.
+- Do not add Cloudflare Access by default. The starter has no authentication; implement the new product's identity and authorization deliberately before exposing protected operations.
+- Preserve native Workers Observability logs and traces on both Workers. Provide `Cloudflare.Telemetry` on Effect-native hosts so `Effect.withSpan` / named `Effect.fn` spans reach Cloudflare, rather than merely enabling the trace metadata. Keep compatibility dates at least `2026-07-28`, tune sampling for volume, and never attach secrets or payloads to telemetry.
 - Callbacks are delivered at least once. Make side effects and scheduled jobs idempotent, and test crash/retry behavior.
 - Use checkout-local Alchemy state in dev and Cloudflare-hosted state for deployed stages. Never commit local state or credentials.
 - Never edit an applied D1 migration. Add the next numbered migration instead.

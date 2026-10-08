@@ -1,1 +1,1 @@
-export { default, App, TestClient, type AppEnv } from "./src/platform/cloudflare/stack.ts";
+export { default, App, type AppEnv } from "./src/platform/cloudflare/stack.ts";

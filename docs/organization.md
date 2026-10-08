@@ -19,13 +19,13 @@ src/
   platform/
     boundary.test.ts               dependency-direction guard
     cloudflare/
-      stack.ts                     Alchemy stack, Website, Access, state selection
+      stack.ts                     Alchemy stack, public Website, telemetry, state
       edge.ts                      forwarding-only Website entry
-      api.ts                       private API Worker and per-request layers
+      api.ts                       private API Worker, telemetry, per-request layers
       database.ts                  optional D1 resource declaration
       <domain>-d1.ts               optional D1 adapter
       <domain>-object.ts           optional Durable Object host
-      access.ts                    request-scoped identity extraction
+      identity.ts                  optional verified request identity extraction
   ui/
     AGENTS.md                      framework conventions and upgrade procedure
     entry.ts                       Runtime.makeApplication / Runtime.run only

@@ -4,32 +4,17 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import Api from "./api.ts";
 
-export const TestClient = Cloudflare.Access.ServiceToken("TestClient", { duration: "720h" });
-
-export const App = Cloudflare.Website.Foldkit(
-  "App",
-  Effect.gen(function* () {
-    const dev = yield* Alchemy.ALCHEMY_DEV.pipe(Effect.orDie);
-    const access = dev
-      ? undefined
-      : yield* Effect.map(TestClient, (token) => ({
-          policies: [
-            { decision: "allow" as const, include: [{ cloudflareAccountMember: token.accountId }] },
-            {
-              decision: "non_identity" as const,
-              include: [{ serviceToken: token.serviceTokenId }],
-            },
-          ],
-        }));
-    return {
-      main: "src/platform/cloudflare/edge.ts",
-      env: { API: Api },
-      assets: { runWorkerFirst: ["/api/*"] },
-      compatibility: { date: "2026-10-04" },
-      access,
-    };
-  }),
-);
+export const App = Cloudflare.Website.Foldkit("App", {
+  main: "src/platform/cloudflare/edge.ts",
+  env: { API: Api },
+  assets: { runWorkerFirst: ["/api/*"] },
+  compatibility: { date: "2026-10-04" },
+  observability: {
+    enabled: true,
+    logs: { enabled: true, invocationLogs: true, headSamplingRate: 1, persist: true },
+    traces: { enabled: true, headSamplingRate: 1, persist: true },
+  },
+});
 
 export type AppEnv = Cloudflare.InferEnv<typeof App>;
 
